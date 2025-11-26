@@ -6,11 +6,12 @@
 
 <div align="center">
 
-<strong>Многоязычный README (TR/EN/RU)</strong>
+<strong>Многоязычный README (TR/EN/RU/ES)</strong>
 
 [![TR](https://img.shields.io/badge/README-TR-blue.svg)](https://github.com/cagritaskn/SplitWire-Turkey/blob/main/README.md)
 [![EN](https://img.shields.io/badge/README-EN-blue.svg)](https://github.com/cagritaskn/SplitWire-Turkey/blob/main/.github/README_EN.md)
 [![RU](https://img.shields.io/badge/README-RU-blue.svg)](https://github.com/cagritaskn/SplitWire-Turkey/blob/main/.github/README_RU.md)
+[![ES](https://img.shields.io/badge/README-ES-blue.svg)](https://github.com/cagritaskn/SplitWire-Turkey/blob/main/.github/README_ES.md)
 
 </div>
 
@@ -30,15 +31,17 @@
 
 # Скачивание и Установка
 
-## Установка с помощью Setup файла (Рекомендуется) [![Download Setup](https://img.shields.io/badge/Download-Setup-blue?logo=windows)](https://github.com/cagritaskn/SplitWire-Turkey/releases/download/1.5.4/SplitWire-Turkey-Setup-Windows-1.5.4.exe)
-- Скачайте пакет установки **[SplitWire-Turkey Setup](https://github.com/cagritaskn/SplitWire-Turkey/releases/download/1.5.4/SplitWire-Turkey-Setup-Windows-1.5.4.exe)** и выполните установку SplitWire-Turkey. (Если вы получите предупреждение SmartScreen "Windows защитил ваш персональный компьютер", нажмите "Подробнее", а затем нажмите "Выполнить в любом случае", информация о сканировании вирусов и этом предупреждении приведена ниже)
+## Установка с помощью Setup файла (Рекомендуется) [![Download Setup](https://img.shields.io/badge/Download-Setup-blue?logo=windows)](https://github.com/cagritaskn/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-Setup-Windows-1.5.5.exe)
+- Скачайте пакет установки **[SplitWire-Turkey Setup](https://github.com/cagritaskn/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-Setup-Windows-1.5.5.exe)** и выполните установку SplitWire-Turkey. (Если вы получите предупреждение SmartScreen "Windows защитил ваш персональный компьютер", нажмите "Подробнее", а затем нажмите "Выполнить в любом случае", информация о сканировании вирусов и этом предупреждении приведена ниже)
 - Откройте приложение **SplitWire-Turkey**.
 - Следуйте разделу **Руководства по использованию** для использования приложения.
 
-## Использование с ZIP файлом (Не рекомендуется) [![Download ZIP](https://img.shields.io/badge/Download-ZIP-blue?logo=windows)](https://github.com/cagritaskn/SplitWire-Turkey/releases/download/1.5.4/SplitWire-Turkey-ZIP-Windows-1.5.4.zip)
-- Скачайте **[SplitWire-Turkey ZIP](https://github.com/cagritaskn/SplitWire-Turkey/releases/download/1.5.4/SplitWire-Turkey-ZIP-Windows-1.5.4.zip)** файл и извлеките его в папку.
+## Использование с ZIP файлом (Не рекомендуется) [![Download ZIP](https://img.shields.io/badge/Download-ZIP-blue?logo=windows)](https://github.com/cagritaskn/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-ZIP-Windows-1.5.5.zip)
+- Скачайте **[SplitWire-Turkey ZIP](https://github.com/cagritaskn/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-ZIP-Windows-1.5.5.zip)** файл и извлеките его в папку.
 - Откройте приложение **SplitWire-Turkey.exe** в папке, куда вы извлекли ZIP файл. (Если вы получите предупреждение SmartScreen "Windows защитил ваш персональный компьютер", нажмите "Подробнее", а затем нажмите "Выполнить в любом случае", информация о сканировании вирусов и этом предупреждении приведена ниже)
 - Следуйте разделу **Руководства по использованию** для использования приложения.
+
+**Примечание:** Если вы испытываете проблемы при загрузке WebCord из программы, вы можете скачать и использовать файл [SplitWire-Turkey-ZIP-Windows-1.5.5-WebCord-Included.zip](https://github.com/cagritaskn/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-ZIP-Windows-1.5.5-WebCord-Included.zip), который уже включает WebCord, интегрированный с SplitWire-Turkey.
 
 ---
 
@@ -53,6 +56,8 @@
 - **WS Альтернативная Установка:** Использует инструменты Wgcf и WireSock 1.4.7.1 для выполнения туннелирования ТОЛЬКО для Discord. (Если включена опция "Туннелировать также браузеры", туннелирование также выполняется для интернет-браузеров)
 
 - **Туннелировать также браузеры:** В дополнение к приложению Discord; туннелирование выполняется для популярных интернет-браузеров, таких как Chrome, Firefox, Opera, OperaGX, Brave, Vivaldi, Zen, Chromium и Edge.
+
+- **Установить повторитель WireSock:** Создает задачу WTS, которая перезапускает WireSock через определенные интервалы. Активируйте и устанавливайте только в случае возникновения проблем. Эта задача Windows Task Scheduler перезапускает службу WireSock через определенные интервалы.
 
 - **Настроить список папок:** Вы можете использовать этот раздел, если хотите выполнить туннелирование для приложения, отличного от Discord.
   - **Добавить Папку:** Выбирает папку, где находится приложение, которое вы хотите туннелировать, и добавляет её в список.
@@ -139,7 +144,11 @@
 
 - **Установить Discord PTB:** Если версия Discord PTB установлена, удаляет её и загружает и устанавливает версию Discord PTB с официального сайта Discord.
 
+- **Установить WebCord:** Устанавливает WebCord, открытую оболочку веб-сайта Discord, написанную с помощью Electron. Также устанавливает ByeDPI, если метод обхода еще не установлен.
+
 - **Выполнить чистую установку для Discord PTB:** Если эта опция активна при нажатии кнопки Установить Discord PTB, она удаляет стандартный Discord при установке Discord PTB.
+
+- **Создать ярлык для WebCord:** Создает ярлык WebCord для легкого доступа с рабочего стола во время установки WebCord.
 
 - **Проверки Статуса:** Показывает установленные версии Discord и выполняет операции установки/удаления и запуска.
 
@@ -151,6 +160,8 @@
 
 - **Службы:** Показывает список служб, связанных с обходом DPI и туннелированием, установленных SplitWire-Turkey или пользователем.
 
+- **Применять настройки DNS и DoH при каждой установке:** Google DNS и Quad9 (с включенным DoH) настраиваются во всех установках методов обхода, которые могут быть выполнены в SplitWire-Turkey. Вы можете отключить автоматическую настройку DNS и DoH, выключив этот переключатель.
+
 - **Удалить Все Службы:** Удаляет все службы в списке в правильном порядке, удаляет файлы drover в папке Discord и удаляет задачу WireSock Refresh Task Scheduler.
 
 - **Вернуть Настройки DNS и DoH:** Сбрасывает настройки DNS и DoH, сделанные при выполнении любой установки в SplitWire-Turkey, устанавливая настройку DNS на "Автоматически (DHCP)" и настройку DoH на "Выключено".
@@ -161,13 +172,15 @@
 
 ---
 
-## Варианты Языка / Dil Seçenekleri / Language Options
+## Варианты Языка / Dil Seçenekleri / Language Options / Opciones de Idioma
 
-- При запуске SplitWire-Turkey вы можете просматривать языковые опции и изменять язык программы с помощью кнопки языкового меню, расположенной под логотипом SplitWire-Turkey. В настоящее время доступны турецкий, английский и русский языки. [Нажмите здесь, чтобы открыть файл README на русском языке.](https://github.com/cagritaskn/SplitWire-Turkey/blob/main/.github/README_RU.md)
+- При запуске SplitWire-Turkey вы можете просматривать языковые опции и изменять язык программы с помощью кнопки языкового меню, расположенной под логотипом SplitWire-Turkey. В настоящее время доступны турецкий, английский, русский и испанский языки. [Нажмите здесь, чтобы открыть файл README на русском языке.](https://github.com/cagritaskn/SplitWire-Turkey/blob/main/.github/README_RU.md)
 
-- SplitWire-Turkey'i çalıştırdığınızda SplitWire-Turkey logosunun altında bulunan dil menüsü butonu ile dil seçeneklerini görüp programın dilini dğeiştirebilirsiniz. Şuan için Türkçe, English ve Русский dilleri mevcut. [Türkçe README dosyasını açmak için buraya tıklayın](https://github.com/cagritaskn/SplitWire-Turkey/blob/main/README.md)
+- SplitWire-Turkey'i çalıştırdığınızda SplitWire-Turkey logosunun altında bulunan dil menüsü butonu ile dil seçeneklerini görüp programın dilini dğeiştirebilirsiniz. Şuan için Türkçe, English, Русский ve Español dilleri mevcut. [Türkçe README dosyasını açmak için buraya tıklayın](https://github.com/cagritaskn/SplitWire-Turkey/blob/main/README.md)
 
-- When you run SplitWire-Turkey, you can view language options and change the program's language using the language menu button located below the SplitWire-Turkey logo. Currently, Turkish, English and Русский languages are available. [Click here to open English README file.](https://github.com/cagritaskn/SplitWire-Turkey/blob/main/.github/README_EN.md)
+- When you run SplitWire-Turkey, you can view language options and change the program's language using the language menu button located below the SplitWire-Turkey logo. Currently, Turkish, English, Русский and Español languages are available. [Click here to open English README file.](https://github.com/cagritaskn/SplitWire-Turkey/blob/main/.github/README_EN.md)
+
+- Al ejecutar SplitWire-Turkey, puede ver las opciones de idioma y cambiar el idioma del programa usando el botón del menú de idioma ubicado debajo del logotipo de SplitWire-Turkey. Actualmente, están disponibles los idiomas turco, inglés, ruso y español. [Haga clic aquí para abrir el archivo README en español.](https://github.com/cagritaskn/SplitWire-Turkey/blob/main/.github/README_ES.md)
 
 ---
 
@@ -177,10 +190,16 @@
 > Если вы используете антивирусное программное обеспечение, отличное от Windows Defender, вам может потребоваться вручную добавить правила в брандмауэр соответствующего антивирусного программного обеспечения для разрешения исполняемых файлов с именами "Program Files\SplitWire-Turkey\res\byedpi\ciadpi.exe" и "Program Files\SplitWire-Turkey\res\proxifyre\ProxiFyre.exe". Для Windows Defender правила брандмауэра добавляются автоматически, вам не нужно выполнять никаких дополнительных операций. **Если используемое вами антивирусное программное обеспечение не имеет собственной функции сетевого брандмауэра или если вы не используете антивирусное программное обеспечение, отличное от Windows Defender, вы можете игнорировать это предупреждение.**
 
 > [!NOTE]
-> Поскольку использование файлов WinDivert заблокировано антивирусным программным обеспечением под названием Kaspersky, вы не можете использовать вкладки GoodbyeDPI и Zapret, пока Kaspersky установлен в вашей системе. После полного удаления Kaspersky из вашей системы скачайте файл **[SplitWire-Turkey Setup](https://github.com/cagritaskn/SplitWire-Turkey/releases/download/1.5.4/SplitWire-Turkey-Setup-Windows-1.5.4.exe)** и выполните установку снова, эти вкладки станут активными. Вы также можете попытаться решить эту проблему, добавив папки C:\Program Files\SplitWire-Turkey и C:\Users\-Имя пользователя-\AppData\Local\SplitWire-Turkey в исключения Kaspersky и снова скачав и установив SplitWire-Turkey.
+> Поскольку использование файлов WinDivert заблокировано антивирусным программным обеспечением под названием Kaspersky, вы не можете использовать вкладки GoodbyeDPI и Zapret, пока Kaspersky установлен в вашей системе. После полного удаления Kaspersky из вашей системы скачайте файл **[SplitWire-Turkey Setup](https://github.com/cagritaskn/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-Setup-Windows-1.5.5.exe)** и выполните установку снова, эти вкладки станут активными. Вы также можете попытаться решить эту проблему, добавив папки C:\Program Files\SplitWire-Turkey и C:\Users\-Имя пользователя-\AppData\Local\SplitWire-Turkey в исключения Kaspersky и снова скачав и установив SplitWire-Turkey.
 
 > [!NOTE]
 > Если вы испытываете проблемы с файлами WinDivert в SplitWire-Turkey v1.5 и более поздних версиях по любой причине, вы можете скачать и использовать старую версию с [SplitWire-Turkey Release 1.0.0](https://github.com/cagritaskn/SplitWire-Turkey/releases/tag/1.0.0).
+
+---
+
+## SplitWire-Turkey macOS Версия
+
+SplitWire-Turkey в настоящее время поддерживается только для операционной системы Windows. Для операционной системы macOS вы можете использовать приложение [SplitWire-Turkey-macOS](https://github.com/a-mertdincer/SplitWire-Turkey-macOS), предоставленное [a-mertdincer](https://github.com/a-mertdincer).
 
 ---
 
@@ -214,10 +233,10 @@
 > Предупреждение **SmartScreen "Windows защитил ваш персональный компьютер"** появляется перед запуском всего неподписанного программного обеспечения. Причина этого в том, что программное обеспечение должно быть предметом международных сертификатов подписи кода. Однако, поскольку этот процесс подписи требует регулярных платежей на основе обменного курса, и я независимый разработчик, который не получает доход, я не могу попытаться подписать программное обеспечение.
 
 > [!NOTE]
-> **[Результаты VirusTotal для файла установки SplitWire-Turkey](https://www.virustotal.com/gui/file-analysis/NmQxYTlhOTMyZDhhY2JlOGU0ZDRkOTkxNjIyMDEzMmI6MTc1ODA2MDE2NQ==)** Ложные срабатывания вирусов или вредоносного программного обеспечения, обнаруженные антивирусным программным обеспечением, используемым небольшой частью пользователей, могут быть обнаружены в файлах, но это программное обеспечение с ненадежными методами обнаружения. Причина обнаружения в том, что SplitWire-Turkey устанавливает несколько приложений из одной программы и вносит множество изменений в систему. (Изменения DNS, установка и удаление служб и пакетов программ и т.д.) Я рекомендую прочитать примечания, приведенные ниже, для ваших опасений по поводу Kaspersky.
+> **[Результаты VirusTotal для файла установки SplitWire-Turkey](https://www.virustotal.com/gui/file/ea2c0c4a81e2256f9d09d59dfdcba0fbd8daca66086808d48290240f20d8ce5b?nocache=1)** Ложные срабатывания вирусов или вредоносного программного обеспечения, обнаруженные антивирусным программным обеспечением, используемым небольшой частью пользователей, могут быть обнаружены в файлах, но это программное обеспечение с ненадежными методами обнаружения. Причина обнаружения в том, что SplitWire-Turkey устанавливает несколько приложений из одной программы и вносит множество изменений в систему. (Изменения DNS, установка и удаление служб и пакетов программ и т.д.) Я рекомендую прочитать примечания, приведенные ниже, для ваших опасений по поводу Kaspersky.
 
 > [!NOTE]
-> **[Результаты VirusTotal для ZIP файла SplitWire-Turkey](https://www.virustotal.com/gui/file-analysis/MWU4ZGJlNThmOTVlZDkwOGM3NWYwZDk3MTliZTc1OTI6MTc1ODA2MDMwNA==)** Ложные срабатывания вирусов или вредоносного программного обеспечения, обнаруженные антивирусным программным обеспечением, используемым небольшой частью пользователей, могут быть обнаружены в файлах, но это программное обеспечение с ненадежными методами обнаружения. Причина обнаружения в том, что SplitWire-Turkey устанавливает несколько приложений из одной программы и вносит множество изменений в систему. (Изменения DNS, установка и удаление служб и пакетов программ и т.д.) Я рекомендую прочитать примечания, приведенные ниже, для ваших опасений по поводу Kaspersky.
+> **[Результаты VirusTotal для ZIP файла SplitWire-Turkey](https://www.virustotal.com/gui/file/2937aaaa52a6d90659f9b6fdfcfd05a55120e988f5328969c4a05a83b11581a3?nocache=1)** Ложные срабатывания вирусов или вредоносного программного обеспечения, обнаруженные антивирусным программным обеспечением, используемым небольшой частью пользователей, могут быть обнаружены в файлах, но это программное обеспечение с ненадежными методами обнаружения. Причина обнаружения в том, что SplitWire-Turkey устанавливает несколько приложений из одной программы и вносит множество изменений в систему. (Изменения DNS, установка и удаление служб и пакетов программ и т.д.) Я рекомендую прочитать примечания, приведенные ниже, для ваших опасений по поводу Kaspersky.
 
 > [!NOTE]
 > Файлы **WinDivert** обнаруживаются как RiskTool антивирусным программным обеспечением Kaspersky и несколькими антивирусными программами. Как можно понять из названия предупреждения **not-a-virus:HEUR:RiskTool.Multi.WinDivert.gen**, эти файлы; **не вирус**, он говорит, что это инструмент, который может быть вредным при использовании с файлами, загруженными из неправильных источников. Поскольку SplitWire-Turkey и все его плагины имеют открытый исходный код, вы можете отслеживать и понимать, как используется библиотека WinDivert. Если вы посмотрите на описания обнаружения, вы можете увидеть слово NotAVirus. Этот тип обнаружения определяется как инструмент риска, потому что библиотека WinDivert с открытым исходным кодом, используемая GoodbyeDPI и Zapret, манипулирует сетевыми пакетами в Windows. Эта библиотека имеет открытый исходный код и доступна по адресу [WinDivert Github](https://github.com/basil00/WinDivert). К сожалению, несмотря на все усилия как российских, так и турецких разработчиков программного обеспечения, Kaspersky, который поддерживает российское правительство, и несколько компаний антивирусного программного обеспечения вместе с ним не приняли отчеты и возражения, поэтому вы не можете запускать методы, использующие WinDivert, если соответствующее антивирусное программное обеспечение установлено в вашей системе. Вы можете удалить Kaspersky и другое антивирусное программное обеспечение с ложными срабатываниями из вашей системы и выполнить установку снова, чтобы запустить методы WinDivert, или вы можете скачать и использовать старую версию без WinDivert с [SplitWire-Turkey Release 1.0.0](https://github.com/cagritaskn/SplitWire-Turkey/releases/tag/1.0.0).
@@ -244,6 +263,8 @@
 - **[GoodbyeDPI](https://github.com/ValdikSS/GoodbyeDPI)** от **[ValdikSS](https://github.com/ValdikSS)**
 - **[zapret](https://github.com/bol-van/zapret)** от **[bol-van](https://github.com/bol-van)**
 - **[WinDivert](https://github.com/basil00/WinDivert)** от **[basil00](https://github.com/basil00)**
+- **[WebCord](https://github.com/SpacingBat3/WebCord)** от **[SpacingBat3](https://github.com/SpacingBat3)**
+- **[SplitWire-Turkey-macOS](https://github.com/a-mertdincer/SplitWire-Turkey-macOS)** от **[a-mertdincer](https://github.com/a-mertdincer)**
 - **Я хотел бы поблагодарить других людей, которые внесли вклад в проект, и спонсоров Patreon и Github**
 
 ---
