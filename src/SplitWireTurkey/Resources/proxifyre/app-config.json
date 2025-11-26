@@ -3,7 +3,8 @@
     "proxies": [
       {
         "appNames": [
-          "roblox",
+          "webcord",
+		  "roblox",
           "discord",
           "Discord.exe",
           "Update.exe",
