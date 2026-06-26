@@ -221,6 +221,8 @@
     "windivert_files_missing_install": "GoodbyeDPI installation cannot be performed because critical WinDivert files are missing. The issue may be related to Kaspersky AV. Visit the Github page for detailed information.",
     "install_error_title": "Installation Error",
     "goodbyedpi_service_install_success": "GoodbyeDPI service installation completed successfully!",
+    "goodbyedpi_fallback_success": "GoodbyeDPI successfully fell back to working preset: {0}",
+    "goodbyedpi_fallback_failed": "All GoodbyeDPI presets failed to connect to pastebin.com. Please verify your network connection.",
     "goodbyedpi_service_install_failed": "GoodbyeDPI service installation failed. Please check the log file:\n{0}",
     "goodbyedpi_service_install_error": "An error occurred during GoodbyeDPI service installation: {0}\nLog: {1}",
     "windivert_files_missing_operation": "GoodbyeDPI operation cannot be performed because critical WinDivert files are missing. The issue may be related to Kaspersky AV. Visit the Github page for detailed information.",

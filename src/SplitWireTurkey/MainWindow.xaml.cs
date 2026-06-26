@@ -6082,7 +6082,7 @@ try {{
 
         private void CheckAndHideNewProcesses(HashSet<int> hiddenProcesses, string zapretLogPath)
         {
-            var processNames = new[] { "winws", "tee", "bash", "sh", "elevator", "cmd" };
+            var processNames = new[] { "winws", "winws2", "tee", "bash", "sh", "elevator", "cmd" };
             
             foreach (var processName in processNames)
             {
@@ -6137,7 +6137,7 @@ try {{
             try
             {
                 // Bu metod artık kullanılmıyor - ContinuouslyHideZapretProcesses kullan
-                var processNames = new[] { "winws", "tee", "bash", "sh" };
+                var processNames = new[] { "winws", "winws2", "tee", "bash", "sh" };
                 
                 foreach (var processName in processNames)
                 {
@@ -9679,7 +9679,7 @@ rem Zapret hizmeti kurulum scripti
 rem Bu script SplitWireTurkey tarafından otomatik olarak oluşturulur
 
 set SERVICE_NAME=zapret
-set EXE_PATH=%~dp0winws.exe
+set EXE_PATH=%~dp0winws2.exe
 set DISPLAY_NAME=Zapret
 set ARGS={parameters}
 
@@ -10343,12 +10343,14 @@ echo Hizmet kurulum işlemi tamamlandı.
         {
             try
             {
-                File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] winws.exe işlemleri aranıyor...\n");
+                File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] winws.exe ve winws2.exe işlemleri aranıyor...\n");
 
-                var processes = Process.GetProcessesByName("winws");
+                var processes1 = Process.GetProcessesByName("winws");
+                var processes2 = Process.GetProcessesByName("winws2");
+                var processes = processes1.Concat(processes2).ToArray();
                 if (processes.Length > 0)
                 {
-                    File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {processes.Length} adet winws.exe işlemi bulundu.\n");
+                    File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {processes.Length} adet winws/winws2 işlemi bulundu.\n");
 
                     foreach (var process in processes)
                     {
@@ -11299,8 +11301,19 @@ echo Hizmet kurulum işlemi tamamlandı.
                 if (success)
                 {
                     File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Hizmet kurulumu başarıyla tamamlandı!\n");
-                    System.Windows.MessageBox.Show(LanguageManager.GetText("messages", "goodbyedpi_service_install_success"), 
-                        LanguageManager.GetText("messages", "success"), MessageBoxButton.OK, MessageBoxImage.Information);
+                    
+                    // Bağlantıyı doğrula ve gerekirse fallback akışını çalıştır
+                    var initiallyConnected = await TestConnectionToPastebinAsync();
+                    if (initiallyConnected)
+                    {
+                        System.Windows.MessageBox.Show(LanguageManager.GetText("messages", "goodbyedpi_service_install_success"), 
+                            LanguageManager.GetText("messages", "success"), MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else
+                    {
+                        // Fallback akışını çalıştır (bu akış kendi içinde MessageBox gösterir)
+                        await RunGoodbyeDPIFallbackFlowAsync(false);
+                    }
                     
                     // Başarılı kurulum sonrası kaldır butonunu güncelle
                     CheckGoodbyeDPIRemoveButtonVisibility();
@@ -11877,6 +11890,225 @@ echo Hizmet kurulum işlemi tamamlandı.
                     LanguageManager.GetText("messages", "error"), MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
+        }
+
+        private async Task<bool> TestConnectionToPastebinAsync()
+        {
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    client.Timeout = TimeSpan.FromSeconds(5);
+                    client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+                    using (var response = await client.GetAsync("https://pastebin.com"))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Pastebin connection test failed: {ex.Message}");
+                return false;
+            }
+        }
+
+        private async Task StopGoodbyeDPIServiceAndProcesses()
+        {
+            try
+            {
+                ExecuteCommand("sc", "stop GoodbyeDPI");
+                await Task.Delay(1000);
+                
+                var processes = Process.GetProcessesByName("goodbyedpi");
+                foreach (var process in processes)
+                {
+                    try
+                    {
+                        process.Kill();
+                        await process.WaitForExitAsync();
+                    }
+                    catch { }
+                    finally { process.Dispose(); }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error stopping GoodbyeDPI: {ex.Message}");
+            }
+        }
+
+        private async Task<bool> TestGoodbyeDPIPresetOneTimeAsync(string parameters)
+        {
+            Process process = null;
+            try
+            {
+                var localGoodbyeDPIPath = GetLocalAppDataGoodbyeDPIPath();
+                var arch = Environment.Is64BitOperatingSystem ? "x86_64" : "x86";
+                var exePath = Path.Combine(localGoodbyeDPIPath, arch, "goodbyedpi.exe");
+                
+                if (!File.Exists(exePath))
+                {
+                    return false;
+                }
+
+                var fullParams = parameters;
+                if (chkGoodbyeDPIUseBlacklist.IsChecked == true)
+                {
+                    var blacklistPath = Path.Combine(localGoodbyeDPIPath, "blacklist.txt");
+                    fullParams += $" --blacklist \"{blacklistPath}\"";
+                }
+
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = exePath,
+                    Arguments = fullParams,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WorkingDirectory = Path.Combine(localGoodbyeDPIPath, arch)
+                };
+
+                process = new Process { StartInfo = startInfo };
+                process.Start();
+
+                await Task.Delay(3000);
+
+                var connected = await TestConnectionToPastebinAsync();
+                return connected;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error testing preset one-time: {ex.Message}");
+                return false;
+            }
+            finally
+            {
+                if (process != null)
+                {
+                    try
+                    {
+                        if (!process.HasExited)
+                        {
+                            process.Kill();
+                            await process.WaitForExitAsync();
+                        }
+                    }
+                    catch { }
+                    finally { process.Dispose(); }
+                }
+            }
+        }
+
+        private async Task<bool> RunGoodbyeDPIFallbackFlowAsync(bool testInitialConnection = true)
+        {
+            var logPath = GetGoodbyeDPILogPath();
+            File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] GoodbyeDPI bağlantı testi başlatılıyor...\n");
+
+            if (testInitialConnection)
+            {
+                var initiallyConnected = await TestConnectionToPastebinAsync();
+                if (initiallyConnected)
+                {
+                    File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Mevcut preset ile bağlantı başarılı.\n");
+                    return true;
+                }
+            }
+
+            File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Mevcut preset ile bağlantı başarısız veya test edilmedi. Alternatif presetler test ediliyor...\n");
+
+            var presetNames = new List<string>();
+            ComboBoxItem currentItem = null;
+            Dispatcher.Invoke(() =>
+            {
+                currentItem = cmbGoodbyeDPIPresets.SelectedItem as ComboBoxItem;
+                foreach (ComboBoxItem item in cmbGoodbyeDPIPresets.Items)
+                {
+                    presetNames.Add(item.Content.ToString());
+                }
+            });
+
+            var currentPresetName = currentItem?.Content.ToString() ?? "";
+            
+            var testOrder = new List<string>();
+            int startIndex = presetNames.IndexOf(currentPresetName);
+            if (startIndex == -1) startIndex = 0;
+            
+            for (int i = 1; i <= presetNames.Count; i++)
+            {
+                int idx = (startIndex + i) % presetNames.Count;
+                testOrder.Add(presetNames[idx]);
+            }
+
+            await StopGoodbyeDPIServiceAndProcesses();
+
+            string workingPresetName = null;
+            foreach (var presetName in testOrder)
+            {
+                File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Test ediliyor: {presetName}...\n");
+                
+                var parameters = GetGoodbyeDPIPresetParameters(presetName);
+                var success = await TestGoodbyeDPIPresetOneTimeAsync(parameters);
+                
+                if (success)
+                {
+                    workingPresetName = presetName;
+                    File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Çalışan preset bulundu: {presetName}\n");
+                    break;
+                }
+                else
+                {
+                    File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Preset başarısız: {presetName}\n");
+                }
+            }
+
+            if (workingPresetName != null)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    foreach (ComboBoxItem item in cmbGoodbyeDPIPresets.Items)
+                    {
+                        if (item.Content.ToString() == workingPresetName)
+                        {
+                            cmbGoodbyeDPIPresets.SelectedItem = item;
+                            break;
+                        }
+                    }
+                });
+
+                var parameters = GetGoodbyeDPIPresetParameters(workingPresetName);
+                if (chkGoodbyeDPIUseBlacklist.IsChecked == true)
+                {
+                    var localGoodbyeDPIPath = GetLocalAppDataGoodbyeDPIPath();
+                    var blacklistPath = Path.Combine(localGoodbyeDPIPath, "blacklist.txt");
+                    parameters += $" --blacklist \"{blacklistPath}\"";
+                }
+
+                File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Yeni çalışan preset {workingPresetName} için hizmet kuruluyor...\n");
+                var installSuccess = await InstallGoodbyeDPIService(parameters, logPath);
+                if (installSuccess)
+                {
+                    File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Hizmet başarıyla yeni preset ile güncellendi.\n");
+                    System.Windows.MessageBox.Show(
+                        LanguageManager.GetText("messages", "goodbyedpi_fallback_success")?.Replace("{0}", workingPresetName) 
+                        ?? $"GoodbyeDPI successfully fell back to working preset: {workingPresetName}",
+                        LanguageManager.GetText("messages", "success"),
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    return true;
+                }
+            }
+            else
+            {
+                File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Tüm presetler başarısız oldu!\n");
+                System.Windows.MessageBox.Show(
+                    LanguageManager.GetText("messages", "goodbyedpi_fallback_failed") 
+                    ?? "All GoodbyeDPI presets failed to connect to pastebin.com. Please verify your network connection.",
+                    LanguageManager.GetText("messages", "error"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+
+            return false;
         }
 
         private async Task<bool> InstallGoodbyeDPIService(string parameters, string logPath = null)

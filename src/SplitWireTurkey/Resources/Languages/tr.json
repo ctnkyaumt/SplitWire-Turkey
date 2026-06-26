@@ -221,6 +221,8 @@
     "windivert_files_missing_install": "Kritik WinDivert dosyaları eksik olduğu için GoodbyeDPI kurulumu yapılamıyor. Sorun Kaspersky AV ile ilgili olabilir. Detaylı bilgi için Github sayfasını ziyaret edin.",
     "install_error_title": "Kurulum Hatası",
     "goodbyedpi_service_install_success": "GoodbyeDPI hizmet kurulumu başarıyla tamamlandı!",
+    "goodbyedpi_fallback_success": "GoodbyeDPI başarıyla çalışan profile geçiş yaptı: {0}",
+    "goodbyedpi_fallback_failed": "Tüm GoodbyeDPI profilleri pastebin.com sitesine bağlanamadı. Lütfen internet bağlantınızı kontrol edin.",
     "goodbyedpi_service_install_failed": "GoodbyeDPI hizmet kurulumu başarısız oldu. Lütfen log dosyasını kontrol edin:\n{0}",
     "goodbyedpi_service_install_error": "GoodbyeDPI hizmet kurulumu sırasında hata oluştu: {0}\nLog: {1}",
     "windivert_files_missing_operation": "Kritik WinDivert dosyaları eksik olduğu için GoodbyeDPI işlemi yapılamıyor. Sorun Kaspersky AV ile ilgili olabilir. Detaylı bilgi için Github sayfasını ziyaret edin.",
