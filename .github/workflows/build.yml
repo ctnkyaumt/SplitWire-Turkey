@@ -1,0 +1,55 @@
+name: Build and Package
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Build C# Application
+      run: |
+        dotnet build src/SplitWireTurkey/SplitWireTurkey.csproj -c Release
+
+    - name: Prepare Assets for Setup
+      shell: pwsh
+      run: |
+        # Create output res folder and copy resources there
+        New-Item -ItemType Directory -Force -Path "src/res"
+        Copy-Item -Path "src/SplitWireTurkey/Resources/*" -Destination "src/res" -Recurse -Force
+        
+        # Copy built binaries to src/ where Inno Setup expects them
+        Copy-Item -Path "src/SplitWireTurkey/bin/Release/net8.0-windows/*" -Destination "src/" -Recurse -Force
+        
+        # Clean up unnecessary files in bin folder (PDBs, XMLs)
+        Remove-Item -Path "src/SplitWireTurkey/bin/Release/net8.0-windows/*.pdb" -ErrorAction SilentlyContinue
+        Remove-Item -Path "src/SplitWireTurkey/bin/Release/net8.0-windows/*.xml" -ErrorAction SilentlyContinue
+
+    - name: Compile Inno Setup Installer
+      run: |
+        iscc /O"src/build_output" src/SplitWire-Turkey-Setup.iss
+
+    - name: Upload Binary Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: SplitWire-Turkey-Binary
+        path: src/SplitWireTurkey/bin/Release/net8.0-windows/
+
+    - name: Upload Installer Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: SplitWire-Turkey-Setup
+        path: src/build_output/SplitWire-Turkey-Setup-Windows-*.exe
