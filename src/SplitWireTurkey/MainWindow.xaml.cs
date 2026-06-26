@@ -7949,16 +7949,29 @@ Get-DnsClientDohServerAddress
                 // Local klasörü her zaman yeniden oluştur (güncel dosyalar için)
                 if (Directory.Exists(localZapretPath))
                 {
-                    try
+                    // Önce dizindeki kilitli olabilecek process'leri sonlandır
+                    StopProcessesInDirectory(localZapretPath, zapretLogPath);
+
+                    bool deleted = false;
+                    for (int i = 0; i < 5; i++)
                     {
-                        File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Mevcut local klasör siliniyor...\n");
-                        Directory.Delete(localZapretPath, true);
-                        File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Local klasör silindi.\n");
-            }
-            catch (Exception ex)
-            {
-                        File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Local klasör silme hatası: {ex.Message}\n");
-                        System.Diagnostics.Debug.WriteLine($"Local klasör silme hatası: {ex.Message}");
+                        try
+                        {
+                            File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Mevcut local klasör siliniyor (Deneme {i + 1}/5)...\n");
+                            Directory.Delete(localZapretPath, true);
+                            deleted = true;
+                            File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Local klasör silindi.\n");
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Local klasör silme denemesi {i + 1} başarısız: {ex.Message}\n");
+                            System.Diagnostics.Debug.WriteLine($"Local klasör silme hatası (Deneme {i + 1}): {ex.Message}");
+                            if (i < 4)
+                            {
+                                System.Threading.Thread.Sleep(300); // 300 ms bekle ve tekrar dene
+                            }
+                        }
                     }
                 }
 
@@ -8101,6 +8114,53 @@ Get-DnsClientDohServerAddress
             {
                 System.Diagnostics.Debug.WriteLine($"Klasör kopyalama genel hatası: {ex.Message}");
                 throw;
+            }
+        }
+
+        private void StopProcessesInDirectory(string directoryPath, string zapretLogPath)
+        {
+            try
+            {
+                File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] '{directoryPath}' dizinindeki çalışan process'ler sonlandırılıyor...\n");
+                
+                var processes = Process.GetProcesses();
+                foreach (var process in processes)
+                {
+                    try
+                    {
+                        if (process.HasExited) continue;
+                        if (process.Id == Process.GetCurrentProcess().Id) continue;
+                        
+                        string processPath = null;
+                        try
+                        {
+                            processPath = process.MainModule?.FileName;
+                        }
+                        catch
+                        {
+                            // Bazı yetki durumlarında FileName alınamaz
+                        }
+                        
+                        if (!string.IsNullOrEmpty(processPath) && processPath.StartsWith(directoryPath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Process sonlandırılıyor: {process.ProcessName} (PID: {process.Id}, Path: {processPath})\n");
+                            process.Kill();
+                            process.WaitForExit(3000);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Process sonlandırma hatası: {ex.Message}");
+                    }
+                    finally
+                    {
+                        process.Dispose();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Process sonlandırma listesi alınırken hata: {ex.Message}\n");
             }
         }
 
