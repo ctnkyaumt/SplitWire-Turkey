@@ -11913,12 +11913,51 @@ echo Hizmet kurulum işlemi tamamlandı.
             }
         }
 
+        private async Task<bool> IsGoodbyeDPIServiceRunningAsync()
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "sc.exe",
+                    Arguments = "query GoodbyeDPI",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                };
+                
+                using var process = Process.Start(psi);
+                if (process != null)
+                {
+                    var output = await process.StandardOutput.ReadToEndAsync();
+                    await process.WaitForExitAsync();
+                    
+                    return output.Contains("RUNNING");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error checking GoodbyeDPI service status: {ex.Message}");
+            }
+            return false;
+        }
+
         private async Task StopGoodbyeDPIServiceAndProcesses()
         {
             try
             {
                 ExecuteCommand("sc", "stop GoodbyeDPI");
-                await Task.Delay(1000);
+                
+                // Wait up to 5 seconds for the service to stop completely
+                for (int i = 0; i < 10; i++)
+                {
+                    if (!await IsGoodbyeDPIServiceRunningAsync())
+                    {
+                        break;
+                    }
+                    await Task.Delay(500);
+                }
                 
                 var processes = Process.GetProcessesByName("goodbyedpi");
                 foreach (var process in processes)
@@ -11972,6 +12011,12 @@ echo Hizmet kurulum işlemi tamamlandı.
                 process.Start();
 
                 await Task.Delay(3000);
+
+                // If the process has exited, it means it crashed or failed to run
+                if (process.HasExited)
+                {
+                    return false;
+                }
 
                 var connected = await TestConnectionToPastebinAsync();
                 return connected;

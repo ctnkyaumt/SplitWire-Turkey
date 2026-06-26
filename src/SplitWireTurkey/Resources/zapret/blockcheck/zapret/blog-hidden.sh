@@ -6,8 +6,18 @@
 EXEDIR="$(dirname "$0")"
 EXEDIR="$(cd "$EXEDIR"; pwd)"
 
-# HIDDEN_MODE çevre değişkenini ayarla (blockcheck.sh için)
+# Otomatik ve sessiz çalışma parametreleri
+export BATCH=1
 export HIDDEN_MODE=1
+export DOMAINS=${DOMAINS:-"roblox.com"}
+export IPVS=${IPVS:-"4"}
+export ENABLE_HTTP=${ENABLE_HTTP:-"0"}
+export ENABLE_HTTPS_TLS12=${ENABLE_HTTPS_TLS12:-"1"}
+export ENABLE_HTTPS_TLS13=${ENABLE_HTTPS_TLS13:-"0"}
+export ENABLE_HTTP3=${ENABLE_HTTP3:-"0"}
+export REPEATS=${REPEATS:-"1"}
+export PARALLEL=${PARALLEL:-"0"}
+export SCANLEVEL=${SCANLEVEL:-"quick"}
 
 # Blockcheck'i çalıştır ve çıktıyı log dosyasına yönlendir
 "$EXEDIR/blockcheck.sh" 2>&1 | tee "$EXEDIR/../blockcheck.log"
