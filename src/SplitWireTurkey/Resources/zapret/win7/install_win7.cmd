@@ -33,6 +33,8 @@ copy WinDivert64.sys ..\zapret-winws
 copy WinDivert.dll ..\zapret-winws
 copy WinDivert64.sys ..\blockcheck\zapret\nfq
 copy WinDivert.dll ..\blockcheck\zapret\nfq
+copy WinDivert64.sys ..\blockcheck\zapret2\nfq2
+copy WinDivert.dll ..\blockcheck\zapret2\nfq2
 echo DONE
 
 :ex

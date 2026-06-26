@@ -1,21 +1,5 @@
 #!/bin/sh
 
-# HIDDEN_MODE kontrolü - bash penceresini gizlemek için
-if [ "$HIDDEN_MODE" = "1" ]; then
-    # Windows/Cygwin için bash penceresini gizle
-    if [ "$OSTYPE" = "cygwin" ] || [ "$UNAME" = "CYGWIN" ]; then
-        # Sadece stdin'i kapat, stdout/stderr'i koru (log için)
-        exec < /dev/null
-        
-        # Pencereyi gizlemek için terminal escape kodları
-        printf '\033[8;1;1t' 2>/dev/null || true  # Terminal boyutunu 1x1 yap
-        printf '\033[2t' 2>/dev/null || true      # Pencereyi minimize et
-        
-        # Terminal title'ı gizle
-        printf '\033]0;\007' 2>/dev/null || true
-    fi
-fi
-
 EXEDIR="$(dirname "$0")"
 EXEDIR="$(cd "$EXEDIR"; pwd)"
 ZAPRET_BASE=${ZAPRET_BASE:-"$EXEDIR"}
@@ -57,19 +41,22 @@ CURL_MAX_TIME_QUIC=${CURL_MAX_TIME_QUIC:-$CURL_MAX_TIME}
 CURL_MAX_TIME_DOH=${CURL_MAX_TIME_DOH:-2}
 MIN_TTL=${MIN_TTL:-1}
 MAX_TTL=${MAX_TTL:-12}
+MIN_AUTOTTL_DELTA=${MIN_AUTOTTL_DELTA:-1}
+MAX_AUTOTTL_DELTA=${MAX_AUTOTTL_DELTA:-5}
 USER_AGENT=${USER_AGENT:-Mozilla}
 HTTP_PORT=${HTTP_PORT:-80}
 HTTPS_PORT=${HTTPS_PORT:-443}
 QUIC_PORT=${QUIC_PORT:-443}
 UNBLOCKED_DOM=${UNBLOCKED_DOM:-iana.org}
 PARALLEL_OUT=/tmp/zapret_parallel
+SIM_SUCCESS_RATE=${SIM_SUCCESS_RATE:-10}
 
 HDRTEMP=/tmp/zapret-hdr
 
 NFT_TABLE=blockcheck
 
 DNSCHECK_DNS=${DNSCHECK_DNS:-8.8.8.8 1.1.1.1 77.88.8.1}
-DNSCHECK_DOM=${DNSCHECK_DOM:-pornhub.com ntc.party rutracker.org www.torproject.org bbc.com}
+DNSCHECK_DOM=${DNSCHECK_DOM:-pornhub.com ej.ru rutracker.org www.torproject.org bbc.com}
 DOH_SERVERS=${DOH_SERVERS:-"https://cloudflare-dns.com/dns-query https://dns.google/dns-query https://dns.quad9.net/dns-query https://dns.adguard.com/dns-query https://common.dot.dns.yandex.net/dns-query"}
 DNSCHECK_DIG1=/tmp/dig1.txt
 DNSCHECK_DIG2=/tmp/dig2.txt
@@ -95,8 +82,7 @@ exitp()
 {
 	local A
 
-	# HIDDEN_MODE veya BATCH modunda read komutunu atla
-	[ "$HIDDEN_MODE" = "1" ] || [ "$BATCH" = 1 ] || {
+	[ "$BATCH" = 1 ] || {
 		echo
 		echo press enter to continue
 		read A
@@ -233,7 +219,7 @@ doh_resolve()
 	# $1 - ip version 4/6
 	# $2 - hostname
 	# $3 - doh server URL. use $DOH_SERVER if empty
-	$MDIG --family=$1 --dns-make-query=$2 | $CURL --max-time $CURL_MAX_TIME_DOH -s --data-binary @- -H "Content-Type: application/dns-message" "${3:-$DOH_SERVER}" | $MDIG --dns-parse-query
+	"$MDIG" --family=$1 --dns-make-query=$2 | "$CURL" --max-time $CURL_MAX_TIME_DOH -s --data-binary @- -H "Content-Type: application/dns-message" "${3:-$DOH_SERVER}" | "$MDIG" --dns-parse-query
 }
 doh_find_working()
 {
@@ -261,7 +247,7 @@ mdig_vars()
 	# $1 - ip version 4/6
 	# $2 - hostname
 
-	hostvar=$(echo $2 | sed -e 's/[\.-]/_/g')
+	hostvar=$(echo $2 | sed -e 's/[\./?&#@%*$^:~=!()+-]/_/g')
 	cachevar=DNSCACHE_${hostvar}_$1
 	countvar=${cachevar}_COUNT
 	eval count=\$${countvar}
@@ -292,41 +278,45 @@ mdig_cache()
 mdig_resolve()
 {
 	# $1 - ip version 4/6
-	# $2 - hostname
+	# $2 - var to receive result
+	# $3 - hostname, possibly with uri : rutracker.org/xxx/xxxx
+	local hostvar cachevar countvar count n sdom
 
-	local hostvar cachevar countvar count ip n
-	mdig_vars "$@"
+	split_by_separator "$3" / sdom
+	mdig_vars "$1" "$sdom"
 	if [ -n "$count" ]; then
 		n=$(random 0 $(($count-1)))
-		eval ip=\$${cachevar}_$n
-		echo $ip
+		eval $2=\$${cachevar}_$n
 		return 0
 	else
-		mdig_cache "$@" && mdig_resolve "$@"
+		mdig_cache "$1" "$sdom" && mdig_resolve "$1" "$2" "$sdom"
 	fi
 }
 mdig_resolve_all()
 {
 	# $1 - ip version 4/6
-	# $2 - hostname
+	# $2 - var to receive result
+	# $3 - hostname
 
-	local hostvar cachevar countvar count ip ips n
-	mdig_vars "$@"
+	local hostvar cachevar countvar count ip__ ips__ n sdom
+
+	split_by_separator "$3" / sdom
+	mdig_vars "$1" "$sdom"
 	if [ -n "$count" ]; then
 		n=0
 		while [ "$n" -le $count ]; do
-			eval ip=\$${cachevar}_$n
-			if [ -n "$ips" ]; then
-				ips="$ips $ip"
+			eval ip__=\$${cachevar}_$n
+			if [ -n "$ips__" ]; then
+				ips__="$ips__ $ip__"
 			else
-				ips="$ip"
+				ips__="$ip__"
 			fi
 			n=$(($n + 1))
 		done
-		echo "$ips"
+		eval $2="\$ips__"
 		return 0
 	else
-		mdig_cache "$@" && mdig_resolve_all "$@"
+		mdig_cache "$1" "$sdom" && mdig_resolve_all "$1" "$2" "$sdom"
 	fi
 }
 
@@ -428,9 +418,16 @@ check_system()
 	else
 		uname -a
 	fi
+	[ -f /etc/os-release ] && {
+		. /etc/os-release
+		[ -n "$PRETTY_NAME" ] && echo "distro: $PRETTY_NAME"
+		[ -n "$OPENWRT_RELEASE" ] && echo "openwrt release: $OPENWRT_RELEASE"
+		[ -n "$OPENWRT_BOARD" ] && echo "openwrt board: $OPENWRT_BOARD"
+		[ -n "$OPENWRT_ARCH" ] && echo "openwrt arch: $OPENWRT_ARCH"
+	}
 	echo firewall type is $FWTYPE
 	echo CURL=$CURL
-	$CURL --version
+	"$CURL" --version
 }
 
 zp_already_running()
@@ -486,7 +483,7 @@ check_prerequisites()
 		exitp 6
 	}
 
-	local prog progs='curl'
+	local prog progs="$CURL"
 	[ "$SKIP_PKTWS" = 1 ] || {
 		case "$UNAME" in
 			Linux)
@@ -602,12 +599,12 @@ curl_translate_code()
 curl_supports_tls13()
 {
 	local r
-	$CURL --tlsv1.3 -Is -o /dev/null --max-time 1 http://127.0.0.1:65535 2>/dev/null
+	"$CURL" --tlsv1.3 -Is -o /dev/null --max-time 1 http://127.0.0.1:65535 2>/dev/null
 	# return code 2 = init failed. likely bad command line options
 	[ $? = 2 ] && return 1
 	# curl can have tlsv1.3 key present but ssl library without TLS 1.3 support
 	# this is online test because there's no other way to trigger library incompatibility case
-	$CURL --tlsv1.3 --max-time 1 -Is -o /dev/null https://iana.org 2>/dev/null
+	"$CURL" --tlsv1.3 --max-time 1 -Is -o /dev/null https://iana.org 2>/dev/null
 	r=$?
 	[ $r != 4 -a $r != 35 ]
 }
@@ -615,16 +612,16 @@ curl_supports_tls13()
 curl_supports_tlsmax()
 {
 	# supported only in OpenSSL and LibreSSL
-	$CURL --version | grep -Fq -e OpenSSL -e LibreSSL -e BoringSSL -e GnuTLS -e quictls || return 1
+	"$CURL" --version | grep -Fq -e OpenSSL -e LibreSSL -e BoringSSL -e GnuTLS -e quictls || return 1
 	# supported since curl 7.54
-	$CURL --tls-max 1.2 -Is -o /dev/null --max-time 1 http://127.0.0.1:65535 2>/dev/null
+	"$CURL" --tls-max 1.2 -Is -o /dev/null --max-time 1 http://127.0.0.1:65535 2>/dev/null
 	# return code 2 = init failed. likely bad command line options
 	[ $? != 2 ]
 }
 
 curl_supports_connect_to()
 {
-	$CURL --connect-to 127.0.0.1:: -o /dev/null --max-time 1 http://127.0.0.1:65535 2>/dev/null
+	"$CURL" --connect-to 127.0.0.1:: -o /dev/null --max-time 1 http://127.0.0.1:65535 2>/dev/null
 	[ "$?" != 2 ]
 }
 
@@ -632,7 +629,7 @@ curl_supports_http3()
 {
 	# if it has http3 : curl: (3) HTTP/3 requested for non-HTTPS URL
 	# otherwise : curl: (2) option --http3-only: is unknown
-	$CURL --connect-to 127.0.0.1:: -o /dev/null --max-time 1 --http3-only http://127.0.0.1:65535 2>/dev/null
+	"$CURL" --connect-to 127.0.0.1:: -o /dev/null --max-time 1 --http3-only http://127.0.0.1:65535 2>/dev/null
 	[ "$?" != 2 ]
 }
 
@@ -660,10 +657,10 @@ curl_with_subst_ip()
 		*:*) ip="[$ip]" ;;
 	esac
 	local connect_to="--connect-to $1::$ip${2:+:$2}" arg
-	shift ; shift ; shift
+	shift ; shift ; shift;
 	[ "$CURL_VERBOSE" = 1 ] && arg="-v"
 	[ "$CURL_CMD" = 1 ] && echo $CURL ${arg:+$arg }$connect_to "$@"
-	ALL_PROXY="$ALL_PROXY" $CURL ${arg:+$arg }$connect_to "$@"
+	ALL_PROXY="$ALL_PROXY" "$CURL" ${arg:+$arg }$connect_to "$@"
 }
 curl_with_dig()
 {
@@ -671,11 +668,14 @@ curl_with_dig()
 	# $2 - domain name
 	# $3 - port
 	# $4+ - curl params
-	local dom=$2 port=$3
-	local ip=$(mdig_resolve $1 $dom)
+	local dom="$2" port=$3
+	local sdom suri ip
+
+	split_by_separator "$dom" / sdom suri
+	mdig_resolve $1 ip $sdom
 	shift ; shift ; shift
 	if [ -n "$ip" ]; then
-		curl_with_subst_ip $dom $port $ip "$@"
+		curl_with_subst_ip "$sdom" "$port" "$ip" "$@"
 	else
 		return 6
 	fi
@@ -687,12 +687,12 @@ curl_probe()
 	# $3 - port
 	# $4 - subst ip
 	# $5+ - curl params
-	local ipv=$1 dom=$2 port=$3 subst=$4
+	local ipv=$1 dom="$2" port=$3 subst=$4
 	shift; shift; shift; shift
 	if [ -n "$subst" ]; then
-		curl_with_subst_ip $dom $port $subst "$@"
+		curl_with_subst_ip "$dom" $port $subst "$@"
 	else
-		curl_with_dig $ipv $dom $port "$@"
+		curl_with_dig $ipv "$dom" $port "$@"
 	fi
 }
 curl_test_http()
@@ -702,8 +702,8 @@ curl_test_http()
 	# $3 - subst ip
 	# $4 - "detail" - detail info
 
-	local code loc hdrt="${HDRTEMP}_${!:-$$}.txt"
-	curl_probe $1 $2 $HTTP_PORT "$3" -SsD "$hdrt" -A "$USER_AGENT" --max-time $CURL_MAX_TIME $CURL_OPT "http://$2" -o /dev/null 2>&1 || {
+	local code loc hdrt="${HDRTEMP}_${!:-$$}.txt" dom="$(tolower "$2")"
+	curl_probe $1 "$2" $HTTP_PORT "$3" -SsD "$hdrt" -A "$USER_AGENT" --max-time $CURL_MAX_TIME $CURL_OPT "http://$2" -o /dev/null 2>&1 || {
 		code=$?
 		rm -f "$hdrt"
 		return $code
@@ -715,8 +715,9 @@ curl_test_http()
 		code=$(hdrfile_http_code "$hdrt")
 		[ "$code" = 301 -o "$code" = 302 -o "$code" = 307 -o "$code" = 308 ] && {
 			loc=$(hdrfile_location "$hdrt")
-			echo "$loc" | grep -qE "^https?://.*$2(/|$)" ||
-			echo "$loc" | grep -vqE '^https?://' || {
+			split_by_separator "$dom" / dom
+			tolower "$loc" | grep -qE "^https?://.*$dom(/|$)" ||
+			tolower "$loc" | grep -vqE '^https?://' || {
 				echo suspicious redirection $code to : $loc
 				rm -f "$hdrt"
 				return 254
@@ -738,7 +739,7 @@ curl_test_https_tls12()
 	# $3 - subst ip
 
 	# do not use tls 1.3 to make sure server certificate is not encrypted
-	curl_probe $1 $2 $HTTPS_PORT "$3" -ISs -A "$USER_AGENT" --max-time $CURL_MAX_TIME $CURL_OPT --tlsv1.2 $TLSMAX12 "https://$2" -o /dev/null 2>&1
+	curl_probe $1 $2 $HTTPS_PORT "$3" $HTTPS_HEAD -Ss -A "$USER_AGENT" --max-time $CURL_MAX_TIME $CURL_OPT --tlsv1.2 $TLSMAX12 "https://$2" -o /dev/null 2>&1
 }
 curl_test_https_tls13()
 {
@@ -747,7 +748,7 @@ curl_test_https_tls13()
 	# $3 - subst ip
 
 	# force TLS1.3 mode
-	curl_probe $1 $2 $HTTPS_PORT "$3" -ISs -A "$USER_AGENT" --max-time $CURL_MAX_TIME $CURL_OPT --tlsv1.3 $TLSMAX13 "https://$2" -o /dev/null 2>&1
+	curl_probe $1 $2 $HTTPS_PORT "$3" $HTTPS_HEAD -Ss -A "$USER_AGENT" --max-time $CURL_MAX_TIME $CURL_OPT --tlsv1.3 $TLSMAX13 "https://$2" -o /dev/null 2>&1
 }
 
 curl_test_http3()
@@ -756,7 +757,7 @@ curl_test_http3()
 	# $2 - domain name
 
 	# force QUIC only mode without tcp
-	curl_with_dig $1 $2 $QUIC_PORT -ISs -A "$USER_AGENT" --max-time $CURL_MAX_TIME_QUIC --http3-only $CURL_OPT "https://$2" -o /dev/null 2>&1
+	curl_with_dig $1 $2 $QUIC_PORT $HTTPS_HEAD -Ss -A "$USER_AGENT" --max-time $CURL_MAX_TIME_QUIC --http3-only $CURL_OPT "https://$2" -o /dev/null 2>&1
 }
 
 ipt_aux_scheme()
@@ -820,7 +821,7 @@ nft_scheme()
 	make_comma_list iplist $3
 
 	nft add table inet $NFT_TABLE
-	nft "add chain inet $NFT_TABLE postnat { type filter hook output priority 102; }"
+	nft "add chain inet $NFT_TABLE postnat { type filter hook postrouting priority 102; }"
 	nft "add rule inet $NFT_TABLE postnat meta nfproto ipv${IPV} $1 dport $2 mark and $DESYNC_MARK == 0 ip${ipver} daddr {$iplist} ct mark set ct mark or $DESYNC_MARK queue num $QNUM"
 	# for strategies with incoming packets involved (autottl)
 	nft "add chain inet $NFT_TABLE prenat { type filter hook prerouting priority -102; }"
@@ -1006,7 +1007,7 @@ check_domain_port_block()
 	echo
 	echo \* port block tests ipv$IPV $1:$2
 	if netcat_setup; then
-		ips=$(mdig_resolve_all $IPV $1)
+		mdig_resolve_all $IPV ips $1
 		if [ -n "$ips" ]; then
 			for ip in $ips; do
 				if netcat_test $ip $2; then
@@ -1079,12 +1080,23 @@ ws_curl_test()
 	# $2 - test function
 	# $3 - domain
 	# $4,$5,$6, ... - ws params
-	local code ws_start=$1 testf=$2 dom=$3
+	local code ws_start=$1 testf=$2 dom="$3"
+
+	[ "$SIMULATE" = 1 ] && {
+		n=$(random 0 99)
+		if [ "$n" -lt "$SIM_SUCCESS_RATE" ]; then
+			echo "SUCCESS"
+			return 0
+		else
+			echo "FAILED"
+			return 7
+		fi
+	}
 	shift
 	shift
 	shift
 	$ws_start "$@"
-	curl_test $testf $dom
+	curl_test $testf "$dom"
 	code=$?
 	ws_kill
 	return $code
@@ -1097,12 +1109,12 @@ tpws_curl_test()
 	echo - $1 ipv$IPV $2 : tpws $3 $4 $5 $6 $7 $8 $9${TPWS_EXTRA:+ $TPWS_EXTRA}${TPWS_EXTRA_1:+ "$TPWS_EXTRA_1"}${TPWS_EXTRA_2:+ "$TPWS_EXTRA_2"}${TPWS_EXTRA_3:+ "$TPWS_EXTRA_3"}${TPWS_EXTRA_4:+ "$TPWS_EXTRA_4"}${TPWS_EXTRA_5:+ "$TPWS_EXTRA_5"}${TPWS_EXTRA_6:+ "$TPWS_EXTRA_6"}${TPWS_EXTRA_7:+ "$TPWS_EXTRA_7"}${TPWS_EXTRA_8:+ "$TPWS_EXTRA_8"}${TPWS_EXTRA_9:+ "$TPWS_EXTRA_9"}
 	local ALL_PROXY="socks5://127.0.0.1:$SOCKS_PORT"
 	ws_curl_test tpws_start "$@"${TPWS_EXTRA:+ $TPWS_EXTRA}${TPWS_EXTRA_1:+ "$TPWS_EXTRA_1"}${TPWS_EXTRA_2:+ "$TPWS_EXTRA_2"}${TPWS_EXTRA_3:+ "$TPWS_EXTRA_3"}${TPWS_EXTRA_4:+ "$TPWS_EXTRA_4"}${TPWS_EXTRA_5:+ "$TPWS_EXTRA_5"}${TPWS_EXTRA_6:+ "$TPWS_EXTRA_6"}${TPWS_EXTRA_7:+ "$TPWS_EXTRA_7"}${TPWS_EXTRA_8:+ "$TPWS_EXTRA_8"}${TPWS_EXTRA_9:+ "$TPWS_EXTRA_9"}
-	local testf=$1 dom=$2 strategy code=$?
+	local testf=$1 dom="$2" strategy code=$?
 	[ "$code" = 0 ] && {
 		shift; shift;
 		strategy="$@"
 		strategy_append_extra_tpws
-		report_append "ipv${IPV} $dom $testf : tpws ${WF:+$WF }$strategy"
+		report_append "$dom" "$testf ipv${IPV}" "tpws ${WF:+$WF }$strategy"
 	}
 	return $code
 }
@@ -1111,17 +1123,17 @@ pktws_curl_test()
 	# $1 - test function
 	# $2 - domain
 	# $3,$4,$5, ... - nfqws/dvtws params
-	local testf=$1 dom=$2 strategy code
+	local testf=$1 dom="$2" strategy code
 
 	shift; shift;
 	echo - $testf ipv$IPV $dom : $PKTWSD ${WF:+$WF }${PKTWS_EXTRA_PRE:+$PKTWS_EXTRA_PRE }${PKTWS_EXTRA_PRE_1:+"$PKTWS_EXTRA_PRE_1" }${PKTWS_EXTRA_PRE_2:+"$PKTWS_EXTRA_PRE_2" }${PKTWS_EXTRA_PRE_3:+"$PKTWS_EXTRA_PRE_3" }${PKTWS_EXTRA_PRE_4:+"$PKTWS_EXTRA_PRE_4" }${PKTWS_EXTRA_PRE_5:+"$PKTWS_EXTRA_PRE_5" }${PKTWS_EXTRA_PRE_6:+"$PKTWS_EXTRA_PRE_6" }${PKTWS_EXTRA_PRE_7:+"$PKTWS_EXTRA_PRE_7" }${PKTWS_EXTRA_PRE_8:+"$PKTWS_EXTRA_PRE_8" }${PKTWS_EXTRA_PRE_9:+"$PKTWS_EXTRA_PRE_9" }$@${PKTWS_EXTRA:+ $PKTWS_EXTRA}${PKTWS_EXTRA_1:+ "$PKTWS_EXTRA_1"}${PKTWS_EXTRA_2:+ "$PKTWS_EXTRA_2"}${PKTWS_EXTRA_3:+ "$PKTWS_EXTRA_3"}${PKTWS_EXTRA_4:+ "$PKTWS_EXTRA_4"}${PKTWS_EXTRA_5:+ "$PKTWS_EXTRA_5"}${PKTWS_EXTRA_6:+ "$PKTWS_EXTRA_6"}${PKTWS_EXTRA_7:+ "$PKTWS_EXTRA_7"}${PKTWS_EXTRA_8:+ "$PKTWS_EXTRA_8"}${PKTWS_EXTRA_9:+ "$PKTWS_EXTRA_9"}
-	ws_curl_test pktws_start $testf $dom ${PKTWS_EXTRA_PRE:+$PKTWS_EXTRA_PRE }${PKTWS_EXTRA_PRE_1:+"$PKTWS_EXTRA_PRE_1" }${PKTWS_EXTRA_PRE_2:+"$PKTWS_EXTRA_PRE_2" }${PKTWS_EXTRA_PRE_3:+"$PKTWS_EXTRA_PRE_3" }${PKTWS_EXTRA_PRE_4:+"$PKTWS_EXTRA_PRE_4" }${PKTWS_EXTRA_PRE_5:+"$PKTWS_EXTRA_PRE_5" }${PKTWS_EXTRA_PRE_6:+"$PKTWS_EXTRA_PRE_6" }${PKTWS_EXTRA_PRE_7:+"$PKTWS_EXTRA_PRE_7" }${PKTWS_EXTRA_PRE_8:+"$PKTWS_EXTRA_PRE_8" }${PKTWS_EXTRA_PRE_9:+"$PKTWS_EXTRA_PRE_9" }"$@"${PKTWS_EXTRA:+ $PKTWS_EXTRA}${PKTWS_EXTRA_1:+ "$PKTWS_EXTRA_1"}${PKTWS_EXTRA_2:+ "$PKTWS_EXTRA_2"}${PKTWS_EXTRA_3:+ "$PKTWS_EXTRA_3"}${PKTWS_EXTRA_4:+ "$PKTWS_EXTRA_4"}${PKTWS_EXTRA_5:+ "$PKTWS_EXTRA_5"}${PKTWS_EXTRA_6:+ "$PKTWS_EXTRA_6"}${PKTWS_EXTRA_7:+ "$PKTWS_EXTRA_7"}${PKTWS_EXTRA_8:+ "$PKTWS_EXTRA_8"}${PKTWS_EXTRA_9:+ "$PKTWS_EXTRA_9"}
+	ws_curl_test pktws_start $testf "$dom" ${PKTWS_EXTRA_PRE:+$PKTWS_EXTRA_PRE }${PKTWS_EXTRA_PRE_1:+"$PKTWS_EXTRA_PRE_1" }${PKTWS_EXTRA_PRE_2:+"$PKTWS_EXTRA_PRE_2" }${PKTWS_EXTRA_PRE_3:+"$PKTWS_EXTRA_PRE_3" }${PKTWS_EXTRA_PRE_4:+"$PKTWS_EXTRA_PRE_4" }${PKTWS_EXTRA_PRE_5:+"$PKTWS_EXTRA_PRE_5" }${PKTWS_EXTRA_PRE_6:+"$PKTWS_EXTRA_PRE_6" }${PKTWS_EXTRA_PRE_7:+"$PKTWS_EXTRA_PRE_7" }${PKTWS_EXTRA_PRE_8:+"$PKTWS_EXTRA_PRE_8" }${PKTWS_EXTRA_PRE_9:+"$PKTWS_EXTRA_PRE_9" }"$@"${PKTWS_EXTRA:+ $PKTWS_EXTRA}${PKTWS_EXTRA_1:+ "$PKTWS_EXTRA_1"}${PKTWS_EXTRA_2:+ "$PKTWS_EXTRA_2"}${PKTWS_EXTRA_3:+ "$PKTWS_EXTRA_3"}${PKTWS_EXTRA_4:+ "$PKTWS_EXTRA_4"}${PKTWS_EXTRA_5:+ "$PKTWS_EXTRA_5"}${PKTWS_EXTRA_6:+ "$PKTWS_EXTRA_6"}${PKTWS_EXTRA_7:+ "$PKTWS_EXTRA_7"}${PKTWS_EXTRA_8:+ "$PKTWS_EXTRA_8"}${PKTWS_EXTRA_9:+ "$PKTWS_EXTRA_9"}
 
 	code=$?
 	[ "$code" = 0 ] && {
 		strategy="$@"
 		strategy_append_extra_pktws
-		report_append "ipv${IPV} $dom $testf : $PKTWSD ${WF:+$WF }$strategy"
+		report_append "$dom" "$testf ipv${IPV}" "$PKTWSD ${WF:+$WF }$strategy"
 	}
 	return $code
 }
@@ -1141,11 +1153,11 @@ xxxws_curl_test_update()
 	# $2 - test function
 	# $3 - domain
 	# $4,$5,$6, ... - nfqws/dvtws params
-	local code xxxf=$1 testf=$2 dom=$3
+	local code xxxf=$1 testf=$2 dom="$3"
 	shift
 	shift
 	shift
-	$xxxf $testf $dom "$@"
+	$xxxf $testf "$dom" "$@"
 	code=$?
 	[ $code = 0 ] && strategy="${strategy:-$@}"
 	return $code
@@ -1161,8 +1173,35 @@ tpws_curl_test_update()
 
 report_append()
 {
+	# $1 - domain
+	# $2 - test function + ipver
+	# $3 - value
+	local hashstr hash hashvar hashcountvar val ct
+
+	# save resources if only one domain
+	[ "$DOMAINS_COUNT" -gt 1 ] && {
+		hashstr="$2 : $3"
+		hash="$(echo -n "$hashstr" | md5f)"
+		hashvar=RESHASH_${hash}
+		hashcountvar=${hashvar}_COUNTER
+
+		NRESHASH=${NRESHASH:-0}
+
+		eval val="\$$hashvar"
+		if [ -n "$val" ]; then
+			eval ct="\$$hashcountvar"
+			ct=$(($ct + 1))
+			eval $hashcountvar="\$ct"
+		else
+			eval $hashvar=\"$hashstr\"
+			eval $hashcountvar=1
+			eval RES_$NRESHASH="\$hash"
+			NRESHASH=$(($NRESHASH+1))
+		fi
+	}
+
 	NREPORT=${NREPORT:-0}
-	eval REPORT_${NREPORT}=\"$@\"
+	eval REPORT_${NREPORT}=\"$2 $1 : $3\"
 	NREPORT=$(($NREPORT+1))
 }
 report_print()
@@ -1173,6 +1212,22 @@ report_print()
 		eval s=\"\${REPORT_$n}\"
 		echo $s
 		n=$(($n+1))
+	done
+}
+result_intersection_print()
+{
+	local n=0 hash hashvar hashcountvar ct val
+	while : ; do
+		eval hash=\"\$RES_$n\"
+		[ -n "$hash" ] || break
+		hashvar=RESHASH_${hash}
+		hashcountvar=${hashvar}_COUNTER
+		eval ct=\"\$$hashcountvar\"
+		[ "$ct" = "$DOMAINS_COUNT" ] && {
+			eval val=\"\$$hashvar\"
+			echo "$val"
+		}
+		n=$(($n + 1))
 	done
 }
 report_strategy()
@@ -1186,22 +1241,25 @@ report_strategy()
 		strategy="$(echo "$strategy" | xargs)"
 		echo "!!!!! $1: working strategy found for ipv${IPV} $2 : $3 $strategy !!!!!"
 		echo
-#		report_append "ipv${IPV} $2 $1 : $3 ${WF:+$WF }$strategy"
 		return 0
 	else
 		echo "$1: $3 strategy for ipv${IPV} $2 not found"
 		echo
-		report_append "ipv${IPV} $2 $1 : $3 not working"
+		report_append "$2" "$1 ipv${IPV}" "$3 not working"
 		return 1
 	fi
-}
-test_has_split()
-{
-	contains "$1" split || contains "$1" disorder
 }
 test_has_fakedsplit()
 {
 	contains "$1" fakedsplit || contains "$1" fakeddisorder
+}
+test_has_split()
+{
+	contains "$1" multisplit || contains "$1" multidisorder || test_has_fakedsplit "$1"
+}
+test_has_hostfakesplit()
+{
+	contains "$1" hostfakesplit
 }
 test_has_fake()
 {
@@ -1227,7 +1285,7 @@ pktws_curl_test_update_vary()
 	# $5,$6,... - strategy
 
 	local testf=$1 sec=$2 domain=$3 desync=$4 proto splits= pos fake ret=1
-	local fake1=- fake2=- fake3=-
+	local fake1=- fake2=- fake3=- fake4=-
 	
 	shift; shift; shift; shift
 	
@@ -1236,28 +1294,37 @@ pktws_curl_test_update_vary()
 	test_has_fake $desync && {
 		fake1="--dpi-desync-fake-$proto=0x00000000"
 		[ "$sec" = 0 ] || {
-			fake2="--dpi-desync-fake-tls=0x00000000 --dpi-desync-fake-tls=! --dpi-desync-fake-tls-mod=rnd,rndsni,dupsid"
-			fake3="--dpi-desync-fake-tls-mod=rnd,dupsid,rndsni,padencap"
+			fake2='--dpi-desync-fake-tls=0x00000000 --dpi-desync-fake-tls=! --dpi-desync-fake-tls-mod=rnd,rndsni,dupsid'
+			# this splits actual fake to '1603' and modified standard fake from offset 2
+			fake3='--dpi-desync-fake-tls=0x1603 --dpi-desync-fake-tls=!+2 --dpi-desync-fake-tls-mod=rnd,dupsid,rndsni --dpi-desync-fake-tcp-mod=seq'
+			fake4='--dpi-desync-fake-tls-mod=rnd,dupsid,rndsni,padencap'
 		}
 	}
 	if test_has_fakedsplit $desync ; then
 		splits="method+2 midsld"
 		[ "$sec" = 0 ] || splits="1 midsld"
+		# do not send fake first
+		fake1='--dpi-desync-fakedsplit-mod=altorder=1'
 	elif test_has_split $desync ; then
 		splits="method+2 midsld"
 		[ "$sec" = 0 ] || splits="1 midsld 1,midsld"
 	fi
-	for fake in '' "$fake1" "$fake2" "$fake3" ; do
+	test_has_hostfakesplit $desync && {
+		fake1="--dpi-desync-hostfakesplit-mod=altorder=1"
+		fake2="--dpi-desync-hostfakesplit-midhost=midsld"
+		fake3="--dpi-desync-hostfakesplit-mod=altorder=1 --dpi-desync-hostfakesplit-midhost=midsld"
+	}
+	for fake in '' "$fake1" "$fake2" "$fake3" "$fake4" ; do
 		[ "$fake" = "-" ] && continue
 		if [ -n "$splits" ]; then
 			for pos in $splits ; do
-				pktws_curl_test_update $testf $domain --dpi-desync=$desync "$@" --dpi-desync-split-pos=$pos $fake && {
+				pktws_curl_test_update $testf "$domain" --dpi-desync=$desync "$@" --dpi-desync-split-pos=$pos $fake && {
 					[ "$SCANLEVEL" = force ] || return 0
 					ret=0
 				}
 			done
 		else
-			pktws_curl_test_update $testf $domain --dpi-desync=$desync "$@" $fake && {
+			pktws_curl_test_update $testf "$domain" --dpi-desync=$desync "$@" $fake && {
 				[ "$SCANLEVEL" = force ] || return 0
 				ret=0
 			}
@@ -1273,8 +1340,8 @@ pktws_check_domain_http_bypass_()
 	# $2 - encrypted test : 0 = plain, 1 - encrypted with server reply risk, 2 - encrypted without server reply risk
 	# $3 - domain
 
-	local ok ttls s f f2 e desync pos fooling frag sec="$2" delta orig splits
-	local need_split need_disorder need_fakedsplit need_fakeddisorder need_fake need_wssize
+	local ok ttls attls s f f2 e desync pos fooling frag sec="$2" delta orig splits
+	local need_split need_disorder need_fakedsplit need_hostfakesplit need_fakeddisorder need_fake need_wssize
 	local splits_http='method+2 midsld method+2,midsld'
 	local splits_tls='2 1 sniext+1 sniext+4 host+1 midsld 1,midsld 1,sniext+1,host+1,midsld-2,midsld,midsld+2,endhost-1'
 
@@ -1285,6 +1352,7 @@ pktws_check_domain_http_bypass_()
 	}
 
 	ttls=$(seq -s ' ' $MIN_TTL $MAX_TTL)
+	attls=$(seq -s ' ' $MIN_AUTOTTL_DELTA $MAX_AUTOTTL_DELTA)
 	need_wssize=1
 	for e in '' '--wssize 1:6'; do
 		need_split=
@@ -1319,25 +1387,33 @@ pktws_check_domain_http_bypass_()
 		done
 
 		need_fakedsplit=1
+		need_hostfakesplit=1
 		need_fakeddisorder=1
 		need_fake=1
-		for desync in fake ${need_split:+fakedsplit fake,multisplit fake,fakedsplit} ${need_disorder:+fakeddisorder fake,multidisorder fake,fakeddisorder}; do
+		for desync in fake ${need_split:+fakedsplit fake,multisplit fake,fakedsplit hostfakesplit fake,hostfakesplit} ${need_disorder:+fakeddisorder fake,multidisorder fake,fakeddisorder}; do
 			[ "$need_fake" = 0 ] && test_has_fake "$desync" && continue
 			[ "$need_fakedsplit" = 0 ] && contains "$desync" fakedsplit && continue
+			[ "$need_hostfakesplit" = 0 ] && contains "$desync" hostfakesplit && continue
 			[ "$need_fakeddisorder" = 0 ] && contains "$desync" fakeddisorder && continue
 			ok=0
 			for ttl in $ttls; do
-				pktws_curl_test_update_vary $1 $2 $3 $desync --dpi-desync-ttl=$ttl $e && {
-					[ "$SCANLEVEL" = quick ] && return
-					ok=1
-					need_wssize=0
-					break
-				}
+				# orig-ttl=1 with start/cutoff limiter drops empty ACK packet in response to SYN,ACK. it does not reach DPI or server.
+				# missing ACK is transmitted in the first data packet of TLS/HTTP proto
+				for f in '' '--orig-ttl=1 --orig-mod-start=s1 --orig-mod-cutoff=d1'; do
+					pktws_curl_test_update_vary $1 $2 $3 $desync --dpi-desync-ttl=$ttl $f $e && {
+						[ "$SCANLEVEL" = quick ] && return
+						ok=1
+						need_wssize=0
+						[ "$SCANLEVEL" = force ] || break
+					}
+				done
+				[ "$ok" = 1 ] && break
 			done
 			# only skip tests if TTL succeeded. do not skip if TTL failed but fooling succeeded
 			[ $ok = 1 -a "$SCANLEVEL" != force ] && {
 				[ "$desync" = fake ] && need_fake=0
 				[ "$desync" = fakedsplit ] && need_fakedsplit=0
+				[ "$desync" = hostfakesplit ] && need_hostfakesplit=0
 				[ "$desync" = fakeddisorder ] && need_fakeddisorder=0
 			}
 			f=
@@ -1346,11 +1422,20 @@ pktws_check_domain_http_bypass_()
 			[ "$IPV" = 6 ] && f="$f hopbyhop hopbyhop2"
 			for fooling in $f; do
 				ok=0
+				f2=
 				pktws_curl_test_update_vary $1 $2 $3 $desync --dpi-desync-fooling=$fooling $e && {
 					warn_fool $fooling $desync
 					[ "$SCANLEVEL" = quick ] && return
 					need_wssize=0
 					ok=1
+				}
+				[ "$fooling" = badseq ] && {
+					[ "$ok" = 1 -a "$SCANLEVEL" != force ] && continue
+					# --dpi-desync-badseq-increment=0 leaves modified by default ack increment
+					pktws_curl_test_update_vary $1 $2 $3 $desync --dpi-desync-fooling=$fooling --dpi-desync-badseq-increment=0 $e && {
+						[ "$SCANLEVEL" = quick ] && return
+						need_wssize=0
+					}
 				}
 				[ "$fooling" = md5sig ] && {
 					[ "$ok" = 1 -a "$SCANLEVEL" != force ] && continue
@@ -1416,18 +1501,30 @@ pktws_check_domain_http_bypass_()
 
 		need_fakedsplit=1
 		need_fakeddisorder=1
+		need_hostfakesplit=1
 		need_fake=1
-		for desync in fake ${need_split:+fakedsplit fake,multisplit fake,fakedsplit} ${need_disorder:+fakeddisorder fake,multidisorder fake,fakeddisorder}; do
+		for desync in fake ${need_split:+fakedsplit fake,multisplit fake,fakedsplit hostfakesplit fake,hostfakesplit} ${need_disorder:+fakeddisorder fake,multidisorder fake,fakeddisorder}; do
 			[ "$need_fake" = 0 ] && test_has_fake "$desync" && continue
 			[ "$need_fakedsplit" = 0 ] && contains "$desync" fakedsplit && continue
+			[ "$need_hostfakesplit" = 0 ] && contains "$desync" hostfakesplit && continue
 			[ "$need_fakeddisorder" = 0 ] && contains "$desync" fakeddisorder && continue
 			ok=0
-			for orig in '' 1 2 3; do
-				for delta in 1 2 3 4 5; do
-					pktws_curl_test_update_vary $1 $2 $3 $desync ${orig:+--orig-autottl=+$orig} --dpi-desync-ttl=1 --dpi-desync-autottl=-$delta $e && ok=1
+			# orig-ttl=1 with start/cutoff limiter drops empty ACK packet in response to SYN,ACK. it does not reach DPI or server.
+			# missing ACK is transmitted in the first data packet of TLS/HTTP proto
+			for delta in $attls; do
+				for f in '' '--orig-ttl=1 --orig-mod-start=s1 --orig-mod-cutoff=d1'; do
+					pktws_curl_test_update_vary $1 $2 $3 $desync --dpi-desync-ttl=1 --dpi-desync-autottl=-$delta $f $e && ok=1
+					[ "$ok" = 1 -a "$SCANLEVEL" != force ] && break
 				done
-				[ "$ok" = 1 -a "$SCANLEVEL" != force ] && break
 			done
+			[ "$SCANLEVEL" = force ] && {
+				for orig in 1 2 3; do
+					for delta in $attls; do
+						pktws_curl_test_update_vary $1 $2 $3 $desync ${orig:+--orig-autottl=+$orig} --dpi-desync-ttl=1 --dpi-desync-autottl=-$delta $e && ok=1
+					done
+					[ "$ok" = 1 -a "$SCANLEVEL" != force ] && break
+				done
+			}
 			[ "$ok" = 1 ] &&
 			{
 				echo "WARNING ! although autottl worked it requires testing on multiple domains to find out reliable delta"
@@ -1437,6 +1534,7 @@ pktws_check_domain_http_bypass_()
 				[ "$SCANLEVEL" = force ] || {
 					[ "$desync" = fake ] && need_fake=0
 					[ "$desync" = fakedsplit ] && need_fakedsplit=0
+					[ "$desync" = hostfakesplit ] && need_hostfakesplit=0
 					[ "$desync" = fakeddisorder ] && need_fakeddisorder=0
 				}
 			}			
@@ -1475,7 +1573,7 @@ pktws_check_domain_http3_bypass_()
 
 	for fake in '' "--dpi-desync-fake-quic=$ZAPRET_BASE/files/fake/quic_initial_www_google_com.bin"; do
 		for rep in '' 2 5 10 20; do
-			pktws_curl_test_update $1 $2 --dpi-desync=fake ${fake:+$fake }${rep:+--dpi-desync-repeats=$rep} && [ "$SCANLEVEL" != force ] && {
+			pktws_curl_test_update $1 $2 --dpi-desync=fake ${fake:+"$fake" }${rep:+--dpi-desync-repeats=$rep} && [ "$SCANLEVEL" != force ] && {
 				[ "$SCANLEVEL" = quick ] && return
 				break
 			}
@@ -1601,7 +1699,7 @@ check_dpi_ip_block()
 	# $1 - test function
 	# $2 - domain
 
-	local blocked_dom=$2
+	local blocked_dom="$2"
 	local blocked_ip blocked_ips unblocked_ip
 
 	echo 
@@ -1609,7 +1707,7 @@ check_dpi_ip_block()
 
 	echo "> testing $UNBLOCKED_DOM on it's original ip"
 	if curl_test $1 $UNBLOCKED_DOM; then
-		unblocked_ip=$(mdig_resolve $IPV $UNBLOCKED_DOM)
+		mdig_resolve $IPV unblocked_ip $UNBLOCKED_DOM
 		[ -n "$unblocked_ip" ] || {
 			echo $UNBLOCKED_DOM does not resolve. tests not possible.
 			return 1
@@ -1618,7 +1716,7 @@ check_dpi_ip_block()
 		echo "> testing $blocked_dom on $unblocked_ip ($UNBLOCKED_DOM)"
 		curl_test $1 $blocked_dom $unblocked_ip detail
 
-		blocked_ips=$(mdig_resolve_all $IPV $blocked_dom)
+		mdig_resolve_all $IPV blocked_ips $blocked_dom
 		for blocked_ip in $blocked_ips; do
 			echo "> testing $UNBLOCKED_DOM on $blocked_ip ($blocked_dom)"
 			curl_test $1 $UNBLOCKED_DOM $blocked_ip detail
@@ -1645,17 +1743,19 @@ check_domain_prolog()
 
 	local code
 
+	[ "$SIMULATE" = 1 ] && return 0
+
 	echo
 	echo \* $1 ipv$IPV $3
 
 	echo "- checking without DPI bypass"
 	curl_test $1 $3 && {
-		report_append "ipv${IPV} $3 $1 : working without bypass"
+		report_append "$3" "$1 ipv${IPV}" "working without bypass"
 		[ "$SCANLEVEL" = force ] || return 1
 	}
 	code=$?
 	curl_has_reason_to_continue $code || {
-		report_append "ipv${IPV} $3 $1 : test aborted, no reason to continue. curl code $(curl_translate_code $code)"
+		report_append "$3" "$1 ipv${IPV}" "test aborted, no reason to continue. curl code $(curl_translate_code $code)"
 		return 1
 	}
 	return 0
@@ -1666,6 +1766,8 @@ check_domain_http_tcp()
 	# $2 - port
 	# $3 - encrypted test : 0 = plain, 1 - encrypted with server reply risk, 2 - encrypted without server reply risk
 	# $4 - domain
+
+	local ips
 
 	# in case was interrupted before
 	pktws_ipt_unprepare_tcp $2
@@ -1683,7 +1785,8 @@ check_domain_http_tcp()
 	[ "$SKIP_PKTWS" = 1 ] || {
 		echo
 	        echo preparing $PKTWSD redirection
-		pktws_ipt_prepare_tcp $2 "$(mdig_resolve_all $IPV $4)"
+		mdig_resolve_all $IPV ips $4
+		pktws_ipt_prepare_tcp $2 "$ips"
 
 		pktws_check_domain_http_bypass $1 $3 $4
 
@@ -1697,6 +1800,8 @@ check_domain_http_udp()
 	# $2 - port
 	# $3 - domain
 
+	local ips
+
 	# in case was interrupted before
 	pktws_ipt_unprepare_udp $2
 	ws_kill
@@ -1706,7 +1811,8 @@ check_domain_http_udp()
 	[ "$SKIP_PKTWS" = 1 ] || {
 		echo
 	        echo preparing $PKTWSD redirection
-		pktws_ipt_prepare_udp $2 "$(mdig_resolve_all $IPV $3)"
+		mdig_resolve_all $IPV ips $3
+		pktws_ipt_prepare_udp $2 "$ips"
 
 		pktws_check_domain_http3_bypass $1 $3
 
@@ -1765,6 +1871,9 @@ configure_curl_opt()
 	curl_supports_tls13 && TLS13=1
 	HTTP3=
 	curl_supports_http3 && HTTP3=1
+
+	HTTPS_HEAD=-I
+	[ "$CURL_HTTPS_GET" = 1 ] && HTTPS_HEAD=
 }
 
 linux_ipv6_defrag_can_be_disabled()
@@ -1825,24 +1934,127 @@ ask_params()
 	curl_supports_connect_to || {
 		echo "installed curl does not support --connect-to option. pls install at least curl 7.49"
 		echo "current curl version:"
-		$CURL --version
+		"$CURL" --version
 		exitp 1
 	}
 
-	# Auto-configure parameters for silent execution
-	DOMAINS=${DOMAINS:-"roblox.com"}
-	IPVS=${IPVS:-"4"}
+	local dom
+	[ -n "$DOMAINS" ] || {
+		DOMAINS="$DOMAINS_DEFAULT"
+		[ "$BATCH" = 1 ] || {
+			echo "specify domain(s) to test. multiple domains are space separated. URIs are supported (rutracker.org/forum/index.php)"
+			printf "domain(s) (default: $DOMAINS) : "
+			read dom
+			[ -n "$dom" ] && DOMAINS="$dom"
+		}
+	}
+	DOMAINS_COUNT="$(echo "$DOMAINS" | wc -w | trim)"
+
+	local IPVS_def=4
+	[ -n "$IPVS" ] || {
+		# yandex public dns
+		pingtest 6 2a02:6b8::feed:0ff && IPVS_def=46
+		[ "$BATCH" = 1 ] || {
+			printf "ip protocol version(s) - 4, 6 or 46 for both (default: $IPVS_def) : "
+			read IPVS
+		}
+		[ -n "$IPVS" ] || IPVS=$IPVS_def
+		[ "$IPVS" = 4 -o "$IPVS" = 6 -o "$IPVS" = 46 ] || {
+			echo 'invalid ip version(s). should be 4, 6 or 46.'
+			exitp 1
+		}
+	}
 	[ "$IPVS" = 46 ] && IPVS="4 6"
-	ENABLE_HTTP=${ENABLE_HTTP:-"0"}
-	ENABLE_HTTPS_TLS12=${ENABLE_HTTPS_TLS12:-"1"}
-	ENABLE_HTTPS_TLS13=${ENABLE_HTTPS_TLS13:-"0"}
-	ENABLE_HTTP3=${ENABLE_HTTP3:-"0"}
-	REPEATS=${REPEATS:-"1"}
-	PARALLEL=${PARALLEL:-"0"}
-	SCANLEVEL=${SCANLEVEL:-"quick"}
-	BATCH=1
 
 	configure_curl_opt
+
+	[ -n "$ENABLE_HTTP" ] || {
+		ENABLE_HTTP=1
+		[ "$BATCH" = 1 ] || {
+			echo
+			ask_yes_no_var ENABLE_HTTP "check http"
+		}
+	}
+
+	[ -n "$ENABLE_HTTPS_TLS12" ] || {
+		ENABLE_HTTPS_TLS12=1
+		[ "$BATCH" = 1 ] || {
+			echo
+			ask_yes_no_var ENABLE_HTTPS_TLS12 "check https tls 1.2"
+		}
+	}
+
+	[ -n "$ENABLE_HTTPS_TLS13" ] || {
+		ENABLE_HTTPS_TLS13=0
+		if [ -n "$TLS13" ]; then
+			[ "$BATCH" = 1 ] || {
+				echo
+				echo "TLS 1.3 uses encrypted ServerHello. DPI cannot check domain name in server response."
+				echo "This can allow more bypass strategies to work."
+				echo "What works for TLS 1.2 will also work for TLS 1.3 but not vice versa."
+				echo "Most sites nowadays support TLS 1.3 but not all. If you can't find a strategy for TLS 1.2 use this test."
+				echo "TLS 1.3 only strategy is better than nothing."
+				ask_yes_no_var ENABLE_HTTPS_TLS13 "check https tls 1.3"
+			}
+		else
+			echo
+			echo "installed curl version does not support TLS 1.3 . tests disabled."
+		fi
+	}
+
+	[ -n "$ENABLE_HTTP3" ] || {
+		ENABLE_HTTP3=0
+		if [ -n "$HTTP3" ]; then
+			ENABLE_HTTP3=1
+			[ "$BATCH" = 1 ] || {
+				echo
+				echo "make sure target domain(s) support QUIC or result will be negative in any case"
+				ask_yes_no_var ENABLE_HTTP3 "check http3 QUIC"
+			}
+		else
+			echo
+			echo "installed curl version does not support http3 QUIC. tests disabled."
+		fi
+	}
+
+	[ -n "$REPEATS" ] || {
+		[ "$BATCH" = 1 ] || {
+			echo
+			echo "sometimes ISPs use multiple DPIs or load balancing. bypass strategies may work unstable."
+			printf "how many times to repeat each test (default: 1) : "
+			read REPEATS
+		}
+		REPEATS=$((0+${REPEATS:-1}))
+		[ "$REPEATS" = 0 ] && {
+			echo invalid repeat count
+			exitp 1
+		}
+	}
+	[ -z "$PARALLEL" -a $REPEATS -gt 1 ] && {
+		PARALLEL=0
+		[ "$BATCH" = 1 ] || {
+			echo
+			echo "parallel scan can greatly increase speed but may also trigger DDoS protection and cause false result"
+			ask_yes_no_var PARALLEL "enable parallel scan"
+		}
+	}
+	PARALLEL=${PARALLEL:-0}
+
+	[ -n "$SCANLEVEL" ] || {
+		SCANLEVEL=standard
+		[ "$BATCH" = 1 ] || {
+			echo
+			echo quick    - scan as fast as possible to reveal any working strategy
+			echo standard - do investigation what works on your DPI
+			echo force    - scan maximum despite of result
+			ask_list SCANLEVEL "quick standard force" "$SCANLEVEL"
+			# disable tpws checks by default in quick mode
+			[ "$SCANLEVEL" = quick -a -z "$SKIP_TPWS" -a "$UNAME" != Darwin ] && SKIP_TPWS=1
+		}
+	}
+
+	echo
+
 	configure_defrag
 }
 
@@ -1977,7 +2189,7 @@ check_dns_()
 	if find_working_public_dns ; then
 		echo comparing system resolver to public DNS : $PUBDNS
 		for dom in $DNSCHECK_DOM; do
-			if check_dns_spoof $dom $PUBDNS ; then
+			if check_dns_spoof "$dom" $PUBDNS ; then
 				echo $dom : MISMATCH
 				echo -- system resolver :
 				cat "$DNSCHECK_DIG1"
@@ -2073,7 +2285,6 @@ sigsilent()
 	exit 1
 }
 
-
 fsleep_setup
 fix_sbin_path
 check_system
@@ -2116,6 +2327,18 @@ cleanup
 echo
 echo \* SUMMARY
 report_print
+[ "$DOMAINS_COUNT" -gt 1 ] && {
+	echo
+	echo \* COMMON
+	result_intersection_print
+	echo
+	[ "$SCANLEVEL" = force ] || {
+		echo "blockcheck optimizes test sequence. To save time some strategies can be skipped if their test is considered useless."
+		echo "That's why COMMON intersection can miss strategies that would work for all domains."
+		echo "Use \"force\" scan level to test all strategies and generate trustable intersection."
+		echo "Current scan level was \"$SCANLEVEL\"".
+	}
+}
 echo
 echo "Please note this SUMMARY does not guarantee a magic pill for you to copy/paste and be happy."
 echo "Understanding how strategies work is very desirable."
