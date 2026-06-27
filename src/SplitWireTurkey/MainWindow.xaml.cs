@@ -11366,6 +11366,9 @@ echo Hizmet kurulum işlemi tamamlandı.
 
                 // ByeDPI hosts.txt dosyasını da senkronize et
                 SyncByeDPIHostsFile();
+
+                // Eğer ByeDPI servisi çalışıyorsa, yeni blacklist'i alabilmesi için servisi yeniden başlat
+                await RestartByeDPIServiceIfRunningAsync();
                 
                 System.Windows.MessageBox.Show(LanguageManager.GetText("messages", "blacklist_saved_success"), LanguageManager.GetText("messages", "success"), MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -12572,6 +12575,32 @@ echo Hizmet kurulum işlemi tamamlandı.
             catch (Exception ex)
             {
                 Debug.WriteLine($"Failed to sync ByeDPI hosts file: {ex.Message}");
+            }
+        }
+
+        private async Task RestartByeDPIServiceIfRunningAsync()
+        {
+            try
+            {
+                if (IsServiceInstalled("ByeDPI"))
+                {
+                    var queryResult = ExecuteCommandString("sc", "query ByeDPI");
+                    if (queryResult.Contains("RUNNING") || queryResult.Contains("ÇALIŞIYOR"))
+                    {
+                        var logPath = GetLogPath();
+                        File.AppendAllText(logPath, "Blacklist güncellendi, ByeDPI hizmeti yeniden başlatılıyor...\n");
+                        
+                        ExecuteCommand("sc", "stop ByeDPI");
+                        await Task.Delay(1500);
+                        ExecuteCommand("sc", "start ByeDPI");
+                        
+                        File.AppendAllText(logPath, "ByeDPI hizmeti başarıyla yeniden başlatıldı.\n");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to restart ByeDPI service: {ex.Message}");
             }
         }
 
