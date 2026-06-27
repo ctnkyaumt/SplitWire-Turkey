@@ -6246,7 +6246,10 @@ try {{
 
                     // service_install.bat dosyasını sessizce çalıştır
                     File.AppendAllText(logPath, "ByeDPI hizmeti service_install.bat ile kuruluyor...\n");
-                    var installResult = ExecuteCommand("cmd", $"/c \"{serviceInstallPath}\" \"{parameters}\"");
+                    var cmdArgs = string.IsNullOrEmpty(parameters)
+                        ? $"/c \"\"{serviceInstallPath}\"\""
+                        : $"/c \"\"{serviceInstallPath}\" {parameters}\"";
+                    var installResult = ExecuteCommand("cmd", cmdArgs);
                     File.AppendAllText(logPath, $"Hizmet kurulum sonucu (Exit Code): {installResult}\n");
 
                     // Hizmetin başarıyla kurulup kurulmadığını kontrol et

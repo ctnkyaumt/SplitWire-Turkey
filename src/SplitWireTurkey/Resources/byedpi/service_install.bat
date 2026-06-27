@@ -11,7 +11,7 @@ set svc_desc="Local SOCKS proxy server to bypass DPI (Deep Packet Inspection)."
 if "%~1" == "" (
     set svc_bin="\"%cd%\ciadpi.exe\" --split 1 --disorder 3+s --mod-http=h,d --auto=torst --tlsrec 1+s"
 ) else (
-    set svc_bin="\"%cd%\ciadpi.exe\" %~1"
+    set svc_bin="\"%cd%\ciadpi.exe\" %*"
 )
 
 sc stop %svc_name%
