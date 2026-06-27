@@ -6241,6 +6241,9 @@ try {{
                     var logPath = GetLogPath();
                     File.AppendAllText(logPath, "ByeDPI hizmeti kuruluyor...\n");
 
+                    // hosts.txt dosyasını senkronize et
+                    SyncByeDPIHostsFile();
+
                     // service_install.bat dosya yolu
                     var serviceInstallPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "res", "byedpi", "service_install.bat");
                     
@@ -11360,6 +11363,9 @@ echo Hizmet kurulum işlemi tamamlandı.
                 var cleanDomains = domains.Where(d => !string.IsNullOrWhiteSpace(d)).ToArray();
                 
                 await File.WriteAllLinesAsync(blacklistPath, cleanDomains);
+
+                // ByeDPI hosts.txt dosyasını da senkronize et
+                SyncByeDPIHostsFile();
                 
                 System.Windows.MessageBox.Show(LanguageManager.GetText("messages", "blacklist_saved_success"), LanguageManager.GetText("messages", "success"), MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -12523,6 +12529,50 @@ echo Hizmet kurulum işlemi tamamlandı.
         {
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             return Path.Combine(localAppData, "SplitWire-Turkey", "GoodbyeDPI");
+        }
+
+        private void SyncByeDPIHostsFile()
+        {
+            try
+            {
+                var localGoodbyeDPIPath = GetLocalAppDataGoodbyeDPIPath();
+                var blacklistPath = Path.Combine(localGoodbyeDPIPath, "blacklist.txt");
+                
+                var targetDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "res", "byedpi");
+                var targetPath = Path.Combine(targetDir, "hosts.txt");
+
+                if (!Directory.Exists(targetDir))
+                {
+                    Directory.CreateDirectory(targetDir);
+                }
+
+                if (File.Exists(blacklistPath))
+                {
+                    File.Copy(blacklistPath, targetPath, true);
+                }
+                else
+                {
+                    var defaultHosts = new[]
+                    {
+                        "discord.gg",
+                        "discord.com",
+                        "discordapp.com",
+                        "roblox.com",
+                        "arkoselabs.com",
+                        "rbxcdn.com",
+                        "rbxinfra.net",
+                        "rbxtrk.com",
+                        "amazonaws.com",
+                        "wattpad.com",
+                        "pastebin.com"
+                    };
+                    File.WriteAllLines(targetPath, defaultHosts);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to sync ByeDPI hosts file: {ex.Message}");
+            }
         }
 
         private async Task<bool> CheckServiceInstalled(string serviceName)
