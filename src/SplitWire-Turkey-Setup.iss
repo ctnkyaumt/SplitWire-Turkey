@@ -4,7 +4,7 @@
 #define MyAppName "SplitWire-Turkey"
 #define MyAppVersion "1.5.5"
 #define MyAppPublisher "SplitWire-Turkey"
-#define MyAppURL "https://github.com/cagritaskn/SplitWire-Turkey"
+#define MyAppURL "https://github.com/ctnkyaumt/SplitWire-Turkey"
 #define MyAppExeName "SplitWire-Turkey.exe"
 
 ; Çoklu dil desteği
@@ -626,6 +626,18 @@ begin
     else
     begin
       Log('WinDivert hizmeti zaten yüklü değil');
+    end;
+
+    // Windows Firewall kurallarını kaldır
+    Log('Windows Firewall kuralları kaldırılıyor...');
+    try
+      Exec('netsh', 'advfirewall firewall delete rule name="ProxiFyre Inbound"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+      Exec('netsh', 'advfirewall firewall delete rule name="ProxiFyre Outbound"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+      Exec('netsh', 'advfirewall firewall delete rule name="ByeDPI ciadpi Inbound"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+      Exec('netsh', 'advfirewall firewall delete rule name="ByeDPI ciadpi Outbound"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+      Log('Windows Firewall kuralları başarıyla kaldırıldı');
+    except
+      Log('UYARI: Windows Firewall kuralları kaldırılamadı');
     end;
 
     Log('1. Aşama tamamlandı - İlerleme: %20');

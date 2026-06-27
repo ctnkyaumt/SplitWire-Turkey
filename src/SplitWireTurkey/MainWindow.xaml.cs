@@ -134,7 +134,7 @@ namespace SplitWireTurkey
                 using var httpClient = new HttpClient();
                 httpClient.DefaultRequestHeaders.Add("User-Agent", "SplitWire-Turkey");
                 
-                var response = await httpClient.GetStringAsync("https://api.github.com/repos/cagritaskn/SplitWire-Turkey/releases/latest");
+                var response = await httpClient.GetStringAsync("https://api.github.com/repos/ctnkyaumt/SplitWire-Turkey/releases/latest");
                 WriteUpdateLog($"GitHub API Response alındı: {response.Length} karakter");
                 
                 var releaseInfo = JsonSerializer.Deserialize<GitHubRelease>(response);
@@ -219,7 +219,7 @@ namespace SplitWireTurkey
                 
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = "https://github.com/cagritaskn/SplitWire-Turkey/releases/latest",
+                    FileName = "https://github.com/ctnkyaumt/SplitWire-Turkey/releases/latest",
                     UseShellExecute = true
                 });
                 
@@ -3297,7 +3297,7 @@ namespace SplitWireTurkey
             {
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = "https://github.com/cagritaskn/SplitWire-Turkey",
+                    FileName = "https://github.com/ctnkyaumt/SplitWire-Turkey",
                     UseShellExecute = true
                 });
             };
@@ -3416,7 +3416,7 @@ namespace SplitWireTurkey
             {
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = "https://github.com/cagritaskn/SplitWire-Turkey/issues",
+                    FileName = "https://github.com/ctnkyaumt/SplitWire-Turkey/issues",
                     UseShellExecute = true
                 });
             };
@@ -4273,7 +4273,7 @@ namespace SplitWireTurkey
                 {
                     // /res klasöründe yoksa GitHub'dan indirmeyi dene
                     File.AppendAllText(logPath, "1.4.7.1 sürümü GitHub'dan indiriliyor...\n");
-                    var downloadUrl = "https://github.com/cagritaskn/SplitWire-Turkey/raw/main/deploy/wiresock-vpn-client-x64-1.4.7.1.msi";
+                    var downloadUrl = "https://github.com/ctnkyaumt/SplitWire-Turkey/raw/main/deploy/wiresock-vpn-client-x64-1.4.7.1.msi";
                     
                     try
                     {
@@ -5309,6 +5309,10 @@ try {{
                 {
                     // Başarılı kurulum sonrası kaldır butonunu güncelle
                     CheckByeDPIRemoveButtonVisibility();
+
+                    // DoH/Secure DNS uyarısını göster
+                    System.Windows.MessageBox.Show(LanguageManager.GetText("messages", "byedpi_dns_warning"), 
+                        LanguageManager.GetText("messages", "info_title"), MessageBoxButton.OK, MessageBoxImage.Information);
                 }
 
                 // 9. Kurulum tamamlandı mesajı
@@ -5546,6 +5550,10 @@ try {{
                 {
                     // Başarılı kurulum sonrası kaldır butonunu güncelle
                     CheckByeDPIRemoveButtonVisibility();
+
+                    // DoH/Secure DNS uyarısını göster
+                    System.Windows.MessageBox.Show(LanguageManager.GetText("messages", "byedpi_dns_warning"), 
+                        LanguageManager.GetText("messages", "info_title"), MessageBoxButton.OK, MessageBoxImage.Information);
                 }
 
                 // 6. Windows Firewall kuralları ekleme (sadece ByeDPI için)
@@ -8322,6 +8330,9 @@ Get-DnsClientDohServerAddress
                     ExecuteCommand("sc", "delete ProxiFyreService");
                     await Task.Delay(1000);
                 }
+
+                // Firewall kurallarını kaldır
+                await RemoveFirewallRulesAsync();
 
                 // 3. Discord klasöründeki drover dosyalarını temizle
                 await CleanupDroverFilesAsync();
@@ -13622,7 +13633,7 @@ echo Hizmet kurulum işlemi tamamlandı.
                 var services = new[] { 
                     "GoodbyeDPI", 
                     "zapret", 
-                    "byedpi", 
+                    "ByeDPI", 
                     "winws1", 
                     "winws2", 
                     "wiresock-client-service", 
@@ -13648,6 +13659,11 @@ echo Hizmet kurulum işlemi tamamlandı.
                         File.AppendAllText(logPath, $"2. {service} hizmeti kaldırılırken hata: {ex.Message}\n");
                     }
                 }
+
+                // Firewall kurallarını kaldır
+                File.AppendAllText(logPath, "2.5. Windows Firewall kuralları kaldırılıyor...\n");
+                await RemoveFirewallRulesAsync();
+                File.AppendAllText(logPath, "2.5. Windows Firewall kuralları kaldırıldı.\n");
 
                 // 3. WireSock'u kaldır
                 File.AppendAllText(logPath, "3. WireSock kaldırılıyor...\n");

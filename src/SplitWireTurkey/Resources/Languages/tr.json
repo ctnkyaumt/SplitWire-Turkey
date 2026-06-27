@@ -205,6 +205,7 @@
     "wiresock_install_unverified_exitcode": "WireSock Secure Connect kurulumu tamamlandı ancak kurulum doğrulanamadı (Exit Code: {0}).\nKuruluma devam ediliyor...",
     "byedpi_st_install_completed": "ByeDPI ST Kurulum tamamlandı. Değişikliklerin uygulanabilmesi için sisteminizi yeniden başlatın. Şimdi yeniden başlatmak istiyorsanız Evet'e tıklayın. Daha sonra yeniden başlatmak istiyorsanız Hayır'a tıklayın.",
     "byedpi_dll_install_completed": "ByeDPI DLL Kurulum tamamlandı. Değişikliklerin uygulanabilmesi için sisteminizi yeniden başlatın. Şimdi yeniden başlatmak istiyorsanız Evet'e tıklayın. Daha sonra yeniden başlatmak istiyorsanız Hayır'a tıklayın.",
+    "byedpi_dns_warning": "ÖNEMLİ NOT:\nTürkiye'deki bazı internet servis sağlayıcıları DNS engellemesi uyguladığı için, ByeDPI kurulduktan sonra kısıtlı bazı sitelere (örn. Pastebin vb.) erişimde sorun yaşayabilirsiniz.\n\nSorunsuz bağlantı için lütfen tarayıcınızın ayarlarına gidip 'Güvenli DNS kullan' (DNS over HTTPS) ayarını etkinleştirin ve Cloudflare veya Google DNS seçin.",
     "confirm_remove_byedpi_services": "ByeDPI hizmetlerini kaldırmak istediğinizden emin misiniz?",
     "remove_byedpi_services_title": "ByeDPI Kaldırma",
     "confirm_zapret_preset_service_kaspersky": "Zapret Önayarlı Hizmet kurulumunu başlatmak istediğinizden emin misiniz?\n\nKaspersky AV tespit edildi. Bu yöntem, Kaspersky AV sistemden tamamen kaldırılmadığı sürece çalışmayacaktır.",

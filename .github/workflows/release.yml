@@ -1,0 +1,173 @@
+name: Release Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Version Bump Type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Fetch all history for tags and release notes
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Calculate New Version
+      shell: pwsh
+      run: |
+        # 1. Read current version from SplitWire-Turkey-Setup.iss
+        $issPath = "src/SplitWire-Turkey-Setup.iss"
+        $issContent = Get-Content $issPath -Raw
+        if ($issContent -match '#define MyAppVersion "([^"]+)"') {
+            $currentVersion = $Matches[1]
+        } else {
+            Write-Error "Could not find MyAppVersion in $issPath"
+            exit 1
+        }
+        Write-Host "Current version: $currentVersion"
+
+        # 2. Compute new version
+        $versionParts = $currentVersion.Split('.')
+        if ($versionParts.Count -eq 3) {
+            $major = [int]$versionParts[0]
+            $minor = [int]$versionParts[1]
+            $patch = [int]$versionParts[2]
+            
+            $bumpType = "${{ inputs.bump_type }}"
+            if ($bumpType -eq "major") {
+                $major++
+                $minor = 0
+                $patch = 0
+            } elseif ($bumpType -eq "minor") {
+                $minor++
+                $patch = 0
+            } else {
+                $patch++
+            }
+            $newVersion = "$major.$minor.$patch"
+        } else {
+            Write-Error "Invalid version format: $currentVersion"
+            exit 1
+        }
+        Write-Host "New version: $newVersion"
+
+        # Export variables for subsequent steps
+        echo "CURRENT_VERSION=$currentVersion" >> $env:GITHUB_ENV
+        echo "NEW_VERSION=$newVersion" >> $env:GITHUB_ENV
+
+    - name: Update Version in Files
+      shell: pwsh
+      run: |
+        $currentVersion = "${{ env.CURRENT_VERSION }}"
+        $newVersion = "${{ env.NEW_VERSION }}"
+        Write-Host "Bumping from $currentVersion to $newVersion in files..."
+
+        # Update ISS file
+        $issPath = "src/SplitWire-Turkey-Setup.iss"
+        $issContent = Get-Content $issPath -Raw
+        $newIssContent = $issContent -replace ('#define MyAppVersion "' + [regex]::Escape($currentVersion) + '"'), ('#define MyAppVersion "' + $newVersion + '"')
+        Set-Content $issPath $newIssContent -NoNewline
+
+        # Update CSPROJ file
+        $csprojPath = "src/SplitWireTurkey/SplitWireTurkey.csproj"
+        $csprojContent = Get-Content $csprojPath -Raw
+        $newCsprojContent = $csprojContent -replace ("<AssemblyVersion>$currentVersion</AssemblyVersion>", "<AssemblyVersion>$newVersion</AssemblyVersion>")
+        $newCsprojContent = $newCsprojContent -replace ("<FileVersion>$currentVersion</FileVersion>", "<FileVersion>$newVersion</FileVersion>")
+        Set-Content $csprojPath $newCsprojContent -NoNewline
+
+        # Update all markdown (.md) files (READMEs)
+        Get-ChildItem -Filter *.md -Recurse | ForEach-Object {
+            $content = Get-Content $_.FullName -Raw
+            if ($content -like "*$currentVersion*") {
+                Write-Host "Updating $_"
+                $newContent = $content -replace [regex]::Escape($currentVersion), $newVersion
+                Set-Content $_.FullName $newContent -NoNewline
+            }
+        }
+
+    - name: Commit and Push Version Bump
+      shell: bash
+      run: |
+        git config --local user.name "github-actions[bot]"
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git add -A
+        git commit -m "Bump version to v${{ env.NEW_VERSION }}"
+        git push origin main
+
+    - name: Create and Push Git Tag
+      shell: bash
+      run: |
+        git tag v${{ env.NEW_VERSION }}
+        git push origin v${{ env.NEW_VERSION }}
+
+    - name: Build C# Application
+      run: |
+        dotnet build src/SplitWireTurkey/SplitWireTurkey.csproj -c Release
+
+    - name: Prepare Assets for Setup
+      shell: pwsh
+      run: |
+        # Create output res folder and copy resources there
+        New-Item -ItemType Directory -Force -Path "src/res"
+        Copy-Item -Path "src/SplitWireTurkey/Resources/*" -Destination "src/res" -Recurse -Force
+        
+        # Copy built binaries to src/ where Inno Setup expects them
+        Copy-Item -Path "src/SplitWireTurkey/bin/Release/net8.0-windows/*" -Destination "src/" -Recurse -Force
+        
+        # Clean up unnecessary files in bin folder (PDBs, XMLs)
+        Remove-Item -Path "src/SplitWireTurkey/bin/Release/net8.0-windows/*.pdb" -ErrorAction SilentlyContinue
+        Remove-Item -Path "src/SplitWireTurkey/bin/Release/net8.0-windows/*.xml" -ErrorAction SilentlyContinue
+
+    - name: Download Prerequisites
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force -Path "src/Prerequisites/.NET 8.0"
+        Invoke-WebRequest -Uri "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/8.0.22/windowsdesktop-runtime-8.0.22-win-x64.exe" -OutFile "src/Prerequisites/.NET 8.0/windowsdesktop-runtime-8.0.22-win-x64.exe"
+        Invoke-WebRequest -Uri "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/8.0.22/windowsdesktop-runtime-8.0.22-win-x86.exe" -OutFile "src/Prerequisites/.NET 8.0/windowsdesktop-runtime-8.0.22-win-x86.exe"
+
+    - name: Compile Inno Setup Installer
+      run: |
+        iscc /O"src/build_output" src/SplitWire-Turkey-Setup.iss
+
+    - name: Create ZIP Package
+      shell: pwsh
+      run: |
+        Compress-Archive -Path "src/SplitWireTurkey/bin/Release/net8.0-windows/*" -DestinationPath "src/build_output/SplitWire-Turkey-ZIP-Windows-${{ env.NEW_VERSION }}.zip" -Force
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ env.NEW_VERSION }}
+        name: SplitWire-Turkey v${{ env.NEW_VERSION }}
+        body: |
+          ### SplitWire-Turkey Release v${{ env.NEW_VERSION }}
+          
+          This release was automatically generated by GitHub Actions.
+          
+          **Changes in this release:**
+          Please check the commit history below.
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        files: |
+          src/build_output/SplitWire-Turkey-Setup-Windows-${{ env.NEW_VERSION }}.exe
+          src/build_output/SplitWire-Turkey-ZIP-Windows-${{ env.NEW_VERSION }}.zip

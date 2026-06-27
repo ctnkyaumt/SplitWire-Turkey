@@ -179,6 +179,7 @@
     "wiresock_install_unverified_exitcode": "La instalación de WireSock Secure Connect se completó pero no pudo ser verificada (Código de Salida: {0}).\nLa instalación continúa...",
     "byedpi_st_install_completed": "Instalación de ByeDPI ST completada. Por favor, reinicie su sistema para que los cambios surtan efecto. Haga clic en Sí para reiniciar ahora, o No para reiniciar más tarde.",
     "byedpi_dll_install_completed": "Instalación de ByeDPI DLL completada. Por favor, reinicie su sistema para que los cambios surtan efecto. Haga clic en Sí para reiniciar ahora, o No para reiniciar más tarde.",
+    "byedpi_dns_warning": "NOTA IMPORTANTE:\nDado que algunos proveedores de servicios de internet aplican bloqueo de DNS, es posible que experimente problemas al acceder a ciertos sitios restringidos (por ejemplo, Pastebin) después de instalar ByeDPI.\n\nPara una conexión sin problemas, vaya a la configuración de su navegador, active 'Usar DNS seguro' (DNS over HTTPS) y seleccione Cloudflare o Google DNS.",
     "confirm_remove_byedpi_services": "¿Está seguro de que desea eliminar los servicios ByeDPI?",
     "remove_byedpi_services_title": "Eliminar ByeDPI",
     "confirm_zapret_preset_service_kaspersky": "¿Está seguro de que desea iniciar la instalación del Servicio Predefinido de Zapret?\n\nKaspersky AV detectado. Este método no funcionará a menos que Kaspersky AV sea completamente eliminado del sistema.",

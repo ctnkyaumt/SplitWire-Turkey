@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="auto" height="128" src="https://github.com/cagritaskn/SplitWire-Turkey/blob/main/src/SplitWireTurkey/Resources/splitwire-logo-128.png">
+  <img width="auto" height="128" src="https://github.com/ctnkyaumt/SplitWire-Turkey/blob/main/src/SplitWireTurkey/Resources/splitwire-logo-128.png">
 </p>
 
 # <p align="center"><strong>SplitWire-Turkey</strong></p>
@@ -8,10 +8,10 @@
 
 <strong>Multilingual README (TR/EN/RU/ES)</strong>
 
-[![TR](https://img.shields.io/badge/README-TR-blue.svg)](https://github.com/cagritaskn/SplitWire-Turkey/blob/main/README.md)
-[![EN](https://img.shields.io/badge/README-EN-blue.svg)](https://github.com/cagritaskn/SplitWire-Turkey/blob/main/.github/README_EN.md)
-[![RU](https://img.shields.io/badge/README-RU-blue.svg)](https://github.com/cagritaskn/SplitWire-Turkey/blob/main/.github/README_RU.md)
-[![ES](https://img.shields.io/badge/README-ES-blue.svg)](https://github.com/cagritaskn/SplitWire-Turkey/blob/main/.github/README_ES.md)
+[![TR](https://img.shields.io/badge/README-TR-blue.svg)](https://github.com/ctnkyaumt/SplitWire-Turkey/blob/main/README.md)
+[![EN](https://img.shields.io/badge/README-EN-blue.svg)](https://github.com/ctnkyaumt/SplitWire-Turkey/blob/main/.github/README_EN.md)
+[![RU](https://img.shields.io/badge/README-RU-blue.svg)](https://github.com/ctnkyaumt/SplitWire-Turkey/blob/main/.github/README_RU.md)
+[![ES](https://img.shields.io/badge/README-ES-blue.svg)](https://github.com/ctnkyaumt/SplitWire-Turkey/blob/main/.github/README_ES.md)
 
 </div>
 
@@ -31,17 +31,17 @@ You can follow the installation and usage instructions from the video guide prep
 
 # Download and Installation
 
-## Installation with Setup File (Recommended) [![Download Setup](https://img.shields.io/badge/Download-Setup-blue?logo=windows)](https://github.com/cagritaskn/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-Setup-Windows-1.5.5.exe)
-- Download the **[SplitWire-Turkey Setup](https://github.com/cagritaskn/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-Setup-Windows-1.5.5.exe)** installation package and perform the SplitWire-Turkey installation. (If you get a SmartScreen "Windows protected your personal computer" warning, click "More info" and then click "Run anyway", information about virus scanning and this warning is provided below)
+## Installation with Setup File (Recommended) [![Download Setup](https://img.shields.io/badge/Download-Setup-blue?logo=windows)](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-Setup-Windows-1.5.5.exe)
+- Download the **[SplitWire-Turkey Setup](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-Setup-Windows-1.5.5.exe)** installation package and perform the SplitWire-Turkey installation. (If you get a SmartScreen "Windows protected your personal computer" warning, click "More info" and then click "Run anyway", information about virus scanning and this warning is provided below)
 - Open the **SplitWire-Turkey** application.
 - Follow the **Usage Guides** section for using the application.
 
-## Usage with ZIP File (Not Recommended) [![Download ZIP](https://img.shields.io/badge/Download-ZIP-blue?logo=windows)](https://github.com/cagritaskn/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-ZIP-Windows-1.5.5.zip)
-- Download the **[SplitWire-Turkey ZIP](https://github.com/cagritaskn/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-ZIP-Windows-1.5.5.zip)** file and extract it to a folder.
+## Usage with ZIP File (Not Recommended) [![Download ZIP](https://img.shields.io/badge/Download-ZIP-blue?logo=windows)](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-ZIP-Windows-1.5.5.zip)
+- Download the **[SplitWire-Turkey ZIP](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-ZIP-Windows-1.5.5.zip)** file and extract it to a folder.
 - Open the **SplitWire-Turkey.exe** application in the folder where you extracted the ZIP file. (If you get a SmartScreen "Windows protected your personal computer" warning, click "More info" and then click "Run anyway", information about virus scanning and this warning is provided below)
 - Follow the **Usage Guides** section for using the application.
 
-**Note:** If you experience problems downloading WebCord from within the program, you can download and use the [SplitWire-Turkey-ZIP-Windows-1.5.5-WebCord-Included.zip](https://github.com/cagritaskn/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-ZIP-Windows-1.5.5-WebCord-Included.zip) file, which already includes WebCord integrated with SplitWire-Turkey.
+**Note:** If you experience problems downloading WebCord from within the program, you can download and use the [SplitWire-Turkey-ZIP-Windows-1.5.5-WebCord-Included.zip](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-ZIP-Windows-1.5.5-WebCord-Included.zip) file, which already includes WebCord integrated with SplitWire-Turkey.
 
 ---
 
@@ -174,13 +174,13 @@ You can follow the installation and usage instructions from the video guide prep
 
 ## Language Options / Dil Seçenekleri / Варианты языка / Opciones de Idioma
 
-- When you run SplitWire-Turkey, you can view language options and change the program's language using the language menu button located below the SplitWire-Turkey logo. Currently, Turkish, English, Русский and Español languages are available. [Click here to open English README file.](https://github.com/cagritaskn/SplitWire-Turkey/blob/main/.github/README_EN.md)
+- When you run SplitWire-Turkey, you can view language options and change the program's language using the language menu button located below the SplitWire-Turkey logo. Currently, Turkish, English, Русский and Español languages are available. [Click here to open English README file.](https://github.com/ctnkyaumt/SplitWire-Turkey/blob/main/.github/README_EN.md)
 
-- SplitWire-Turkey'i çalıştırdığınızda SplitWire-Turkey logosunun altında bulunan dil menüsü butonu ile dil seçeneklerini görüp programın dilini dğeiştirebilirsiniz. Şuan için Türkçe, English, Русский ve Español dilleri mevcut. [Türkçe README dosyasını açmak için buraya tıklayın](https://github.com/cagritaskn/SplitWire-Turkey/blob/main/README.md)
+- SplitWire-Turkey'i çalıştırdığınızda SplitWire-Turkey logosunun altında bulunan dil menüsü butonu ile dil seçeneklerini görüp programın dilini dğeiştirebilirsiniz. Şuan için Türkçe, English, Русский ve Español dilleri mevcut. [Türkçe README dosyasını açmak için buraya tıklayın](https://github.com/ctnkyaumt/SplitWire-Turkey/blob/main/README.md)
 
-- При запуске SplitWire-Turkey вы можете просматривать языковые опции и изменять язык программы с помощью кнопки языкового меню, расположенной под логотипом SplitWire-Turkey. В настоящее время доступны турецкий, английский, русский и испанский языки. [Нажмите здесь, чтобы открыть файл README на русском языке.](https://github.com/cagritaskn/SplitWire-Turkey/blob/main/.github/README_RU.md)
+- При запуске SplitWire-Turkey вы можете просматривать языковые опции и изменять язык программы с помощью кнопки языкового меню, расположенной под логотипом SplitWire-Turkey. В настоящее время доступны турецкий, английский, русский и испанский языки. [Нажмите здесь, чтобы открыть файл README на русском языке.](https://github.com/ctnkyaumt/SplitWire-Turkey/blob/main/.github/README_RU.md)
 
-- Al ejecutar SplitWire-Turkey, puede ver las opciones de idioma y cambiar el idioma del programa usando el botón del menú de idioma ubicado debajo del logotipo de SplitWire-Turkey. Actualmente, están disponibles los idiomas turco, inglés, ruso y español. [Haga clic aquí para abrir el archivo README en español.](https://github.com/cagritaskn/SplitWire-Turkey/blob/main/.github/README_ES.md)
+- Al ejecutar SplitWire-Turkey, puede ver las opciones de idioma y cambiar el idioma del programa usando el botón del menú de idioma ubicado debajo del logotipo de SplitWire-Turkey. Actualmente, están disponibles los idiomas turco, inglés, ruso y español. [Haga clic aquí para abrir el archivo README en español.](https://github.com/ctnkyaumt/SplitWire-Turkey/blob/main/.github/README_ES.md)
 
 ---
 
@@ -190,10 +190,10 @@ You can follow the installation and usage instructions from the video guide prep
 > If you are using an antivirus software other than Windows Defender, you may need to manually add rules to allow the executable files named "Program Files\SplitWire-Turkey\res\byedpi\ciadpi.exe" and "Program Files\SplitWire-Turkey\res\proxifyre\ProxiFyre.exe" in the firewall of the relevant antivirus software. For Windows Defender, firewall rules are added automatically, you don't need to do any extra operations. **If the antivirus software you use does not have its own network firewall feature or if you are not using an antivirus software other than Windows Defender, you can ignore this warning.**
 
 > [!NOTE]
-> Since the use of WinDivert files is blocked by the antivirus software named Kaspersky, you cannot use the GoodbyeDPI and Zapret tabs while Kaspersky is installed on your system. After completely removing Kaspersky from your system, download the **[SplitWire-Turkey Setup](https://github.com/cagritaskn/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-Setup-Windows-1.5.5.exe)** file and perform installation again, these tabs will become active. You can also try to solve this problem by adding C:\Program Files\SplitWire-Turkey and C:\Users\-Username-\AppData\Local\SplitWire-Turkey folders to Kaspersky exceptions and downloading and installing SplitWire-Turkey again.
+> Since the use of WinDivert files is blocked by the antivirus software named Kaspersky, you cannot use the GoodbyeDPI and Zapret tabs while Kaspersky is installed on your system. After completely removing Kaspersky from your system, download the **[SplitWire-Turkey Setup](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-Setup-Windows-1.5.5.exe)** file and perform installation again, these tabs will become active. You can also try to solve this problem by adding C:\Program Files\SplitWire-Turkey and C:\Users\-Username-\AppData\Local\SplitWire-Turkey folders to Kaspersky exceptions and downloading and installing SplitWire-Turkey again.
 
 > [!NOTE]
-> If you experience problems with WinDivert files in SplitWire-Turkey v1.5 and later versions for any reason, you can download and use the old version from [SplitWire-Turkey Release 1.0.0](https://github.com/cagritaskn/SplitWire-Turkey/releases/tag/1.0.0).
+> If you experience problems with WinDivert files in SplitWire-Turkey v1.5 and later versions for any reason, you can download and use the old version from [SplitWire-Turkey Release 1.0.0](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/tag/1.0.0).
 
 ---
 
@@ -214,7 +214,7 @@ SplitWire-Turkey is currently only supported for Windows operating system. For m
 
 - Discord "Messages could not be loaded" error: This problem occurs when Discord itself detects suspicious IP changes or when Cloudflare WARP detects abuse. If you experience this problem, turn off your modem, wait 15-30 seconds, then restart it. Then restart your computer and test whether the problem is resolved. If you still can't reach a solution this way, you can try resetting the Discord cache by deleting the C:\Users\-Username-\AppData\Roaming\discord folder. (This method will log you out of your Discord account, you will be asked to log in again) If you still can't reach a solution this way, try other methods.
 
-- Creating error reports: You can go to the [SplitWire-Turkey Issues page](https://github.com/cagritaskn/SplitWire-Turkey/issues) and click the **New Issue** button in the top right, and report by adding the .log files in the AppData\Local\SplitWire-Turkey\Logs folder to your report. You can open the Logs folder using the Open Logs Folder button at the bottom of the About page of the SplitWire-Turkey program.
+- Creating error reports: You can go to the [SplitWire-Turkey Issues page](https://github.com/ctnkyaumt/SplitWire-Turkey/issues) and click the **New Issue** button in the top right, and report by adding the .log files in the AppData\Local\SplitWire-Turkey\Logs folder to your report. You can open the Logs folder using the Open Logs Folder button at the bottom of the About page of the SplitWire-Turkey program.
 
 ---
 
@@ -239,7 +239,7 @@ If you wish, you can scan the entire folder, installation file, .zip file or sou
 > **[SplitWire-Turkey ZIP file VirusTotal results](https://www.virustotal.com/gui/file/2937aaaa52a6d90659f9b6fdfcfd05a55120e988f5328969c4a05a83b11581a3?nocache=1)** False positive virus or malware reports detected by antivirus software used by a small segment of users may be detected in the files, but these are software with unreliable detection methods. The reason for detection is that SplitWire-Turkey installs multiple applications from a single program and makes many changes on the system. (DNS changes, service and program package installation, removal, etc.) I recommend reading the notes given below for your concerns about Kaspersky.
 
 > [!NOTE]
-> **WinDivert** files are detected as RiskTool by Kaspersky and a few antivirus software. As can be understood from the warning name **not-a-virus:HEUR:RiskTool.Multi.WinDivert.gen**, these files are; **not a virus**, it says it is a tool that can be harmful when used with files downloaded from wrong sources. Since SplitWire-Turkey and all its plugins are open source, you can track and understand how the WinDivert library is used. If you look at the detection descriptions, you can see the word NotAVirus. This detection type is defined as a risk tool because the open source WinDivert library used by GoodbyeDPI and Zapret manipulates network packets on Windows. This library is open source and can be accessed from [WinDivert Github](https://github.com/basil00/WinDivert). Unfortunately, despite all the efforts of both Russian and Turkish software developers, Kaspersky, which is pro-Russian government, and a few antivirus software companies together with it did not accept the reports and objections, so you cannot run methods using WinDivert if the relevant antivirus software is installed on your system. You can remove Kaspersky and other false positive antivirus software from your system and perform installation again to run WinDivert methods, or you can download and use the old version without WinDivert from [SplitWire-Turkey Release 1.0.0](https://github.com/cagritaskn/SplitWire-Turkey/releases/tag/1.0.0).
+> **WinDivert** files are detected as RiskTool by Kaspersky and a few antivirus software. As can be understood from the warning name **not-a-virus:HEUR:RiskTool.Multi.WinDivert.gen**, these files are; **not a virus**, it says it is a tool that can be harmful when used with files downloaded from wrong sources. Since SplitWire-Turkey and all its plugins are open source, you can track and understand how the WinDivert library is used. If you look at the detection descriptions, you can see the word NotAVirus. This detection type is defined as a risk tool because the open source WinDivert library used by GoodbyeDPI and Zapret manipulates network packets on Windows. This library is open source and can be accessed from [WinDivert Github](https://github.com/basil00/WinDivert). Unfortunately, despite all the efforts of both Russian and Turkish software developers, Kaspersky, which is pro-Russian government, and a few antivirus software companies together with it did not accept the reports and objections, so you cannot run methods using WinDivert if the relevant antivirus software is installed on your system. You can remove Kaspersky and other false positive antivirus software from your system and perform installation again to run WinDivert methods, or you can download and use the old version without WinDivert from [SplitWire-Turkey Release 1.0.0](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/tag/1.0.0).
 
 > [!NOTE]
 > **Not-a-virus warnings generally mean that an application can be misused when preferred.**
@@ -247,7 +247,7 @@ The not-a-virus:HEUR:RiskTool.Multi.WinDivertTool warning is such a warning.
 WinDivert library is an open source library for manipulating network packets on Windows operating systems. This library gains functionality with various software. GoodbyeDPI is one of them. GoodbyeDPI's purpose in using the WinDivert library is to prevent the service provider from examining correctly by making small changes in network packets.
 However, software that can use WinDivert for malicious purposes can also be written. For example, software that performs phishing, MITM attacks or recording/sending user inputs by completely changing packets can be prepared. **However, this does not make the WinDivert library malicious. The software that uses the WinDivert library for malicious purposes makes it malicious.**
 The antivirus software named Kaspersky, whether right or wrong, warns about this, but the main issue comes from its submission to the pressures of the Russian government. As you know, there is an internet freedom restriction in Russia. The government puts pressure on companies under its roof to block bypass methods as much as possible. The company named Kaspersky does not resist these pressures and accepts them. It tries to prevent methods that help bypass in many ways.
-**In short, as long as you download from the right source, SplitWire-Turkey cannot harm your computer. Every time you download, first look at the address bar and pay attention to the URL. Download and use SplitWire-Turkey only from [this page](https://github.com/cagritaskn/SplitWire-Turkey/releases/).**
+**In short, as long as you download from the right source, SplitWire-Turkey cannot harm your computer. Every time you download, first look at the address bar and pay attention to the URL. Download and use SplitWire-Turkey only from [this page](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/).**
 
 ---
 
@@ -309,7 +309,7 @@ Requirements:
 
 1. **Download Source Code**
    ```bash
-   git clone https://github.com/cagritaskn/SplitWire-Turkey.git
+   git clone https://github.com/ctnkyaumt/SplitWire-Turkey.git
    cd SplitWire-Turkey/src
    ```
 
