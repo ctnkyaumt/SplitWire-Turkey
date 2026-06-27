@@ -8,7 +8,11 @@ set svc_name="ByeDPI"
 set svc_desc="Local SOCKS proxy server to bypass DPI (Deep Packet Inspection)."
 
 :: Set up launch args (bypass methods) here.
-set svc_bin="\"%cd%\ciadpi.exe\" --split 1 --disorder 3+s --mod-http=h,d --auto=torst --tlsrec 1+s"
+if "%~1" == "" (
+    set svc_bin="\"%cd%\ciadpi.exe\" --split 1 --disorder 3+s --mod-http=h,d --auto=torst --tlsrec 1+s"
+) else (
+    set svc_bin="\"%cd%\ciadpi.exe\" %~1"
+)
 
 sc stop %svc_name%
 sc delete %svc_name%

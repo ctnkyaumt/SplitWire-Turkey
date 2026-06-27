@@ -55,6 +55,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>res\drover\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </Content>
+    <Content Include="Resources\byedpi\**" Condition="Exists('Resources\byedpi')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>res\byedpi\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
   </ItemGroup>
 
 </Project> 

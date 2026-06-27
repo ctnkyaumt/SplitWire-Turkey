@@ -805,6 +805,75 @@
                     
                     <!-- ByeDPI Buttons -->
                     <StackPanel Grid.Row="0" Orientation="Vertical">
+                        <!-- Hazır Ayarlar Başlığı -->
+                        <TextBlock x:Name="txtPresetsByeDPI" 
+                                   Text="Hazır Ayarlar"
+                                   FontFamily="{StaticResource PoppinsBold}"
+                                   FontSize="18"
+                                   FontWeight="Bold"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,15"/>
+                        
+                        <!-- Hazır Ayar ve Düzenle Switch Yan Yana -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10" HorizontalAlignment="Center">
+                            <StackPanel Orientation="Horizontal"
+                                        ToolTipService.InitialShowDelay="1000"
+                                        ToolTipService.ShowDuration="5000">
+                                <StackPanel.ToolTip>
+                                    <ToolTip x:Name="tooltipByeDPIPreset" 
+                                             FontFamily="Poppins Regular"
+                                             FontSize="12"
+                                             Placement="Mouse"/>
+                                </StackPanel.ToolTip>
+                                <TextBlock x:Name="txtPresetByeDPI" Text="Hazır Ayar:" 
+                                           VerticalAlignment="Center" 
+                                           FontWeight="Bold"
+                                           FontFamily="{StaticResource PoppinsRegular}"
+                                           Margin="0,0,10,0"/>
+                                
+                                <ComboBox x:Name="cmbByeDPIPresets" 
+                                          Width="220"
+                                          FontFamily="{StaticResource PoppinsRegular}"
+                                          SelectionChanged="CmbByeDPIPresets_SelectionChanged"/>
+                            </StackPanel>
+                            
+                            <StackPanel Orientation="Horizontal"
+                                        Margin="20,0,0,0"
+                                        ToolTipService.InitialShowDelay="1000"
+                                        ToolTipService.ShowDuration="5000">
+                                <StackPanel.ToolTip>
+                                    <ToolTip x:Name="tooltipByeDPIEditPreset" 
+                                             FontFamily="Poppins Regular"
+                                             FontSize="12"
+                                             Placement="Mouse"/>
+                                </StackPanel.ToolTip>
+                                <!-- Hazır Ayarı Düzenle Toggle Switch -->
+                                <ToggleButton x:Name="chkByeDPIManualParams" 
+                                             Style="{StaticResource ModernToggleSwitchStyle}"
+                                             Checked="ChkByeDPIManualParams_Checked"
+                                             Unchecked="ChkByeDPIManualParams_Unchecked"/>
+                                <TextBlock x:Name="txtEditPresetByeDPI" Text="Hazır ayarı düzenle" 
+                                           FontFamily="{StaticResource Montserrat}"
+                                           VerticalAlignment="Center"
+                                           Margin="10,0,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+                        
+                        <!-- Parametre TextBox -->
+                        <TextBox x:Name="txtByeDPIParams" 
+                                 Height="60"
+                                 Width="550"
+                                 MaxWidth="550"
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="True"
+                                 VerticalScrollBarVisibility="Auto"
+                                 Margin="0,0,0,20"
+                                 HorizontalAlignment="Center"
+                                 Visibility="Collapsed"/>
+
+                        <!-- Spacer for aesthetics -->
+                        <Separator Height="1" Background="#e0e0e0" Margin="0,10,0,20" Width="500" HorizontalAlignment="Center"/>
+
                         <Button x:Name="btnByeDPISetup" 
                                 Content="ByeDPI Split Tunneling Kurulum" 
                                 Style="{StaticResource MaterialDesignOutlinedButton}"

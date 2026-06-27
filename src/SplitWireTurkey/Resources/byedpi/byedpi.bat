@@ -1,4 +1,8 @@
 @echo off
 title ByeDPI
 
-ciadpi.exe --split 1 --disorder 3+s --mod-http=h,d --auto=torst --tlsrec 1+s
+if "%~1" == "" (
+    ciadpi.exe -o1 -a1 -r-5+se
+) else (
+    ciadpi.exe %*
+)

@@ -275,7 +275,8 @@ namespace SplitWireTurkey
         // Sekme boyut yönetimi için değişkenler
         private double _mainPageBaseHeight = 610;
         private double _mainPageAdvancedSettingsHeight = 875;
-        private double _byeDPIHeight = 640;
+        private double _byeDPIBaseHeight = 700;
+        private double _byeDPIManualParamsHeight = 80;
         private double _discordHeight = 800;
         private double _zapretBaseHeight = 670;
         private double _zapretManualParamsHeight = 765;
@@ -298,6 +299,7 @@ namespace SplitWireTurkey
         private bool _goodbyeDPIManualParamsActive = false;
         private bool _goodbyeDPIUseBlacklistActive = false;
         private bool _goodbyeDPIEditBlacklistActive = false;
+        private bool _byeDPIManualParamsActive = false;
 
         // Görev çubuğu karanlık mod desteği
         private bool _isTaskbarDarkModeSupported = false;
@@ -354,6 +356,7 @@ namespace SplitWireTurkey
             CheckZapretFilesExist(); // Sadece kontrol yap, kopyalama yapma
             LoadZapretPresets();
             LoadGoodbyeDPIPresets();
+            LoadByeDPIPresets();
             CheckAllServices(); // Yeni eklenen servis kontrolü
             CheckDiscordStatus(); // Discord durumunu kontrol et
             
@@ -2201,17 +2204,32 @@ namespace SplitWireTurkey
                 if (txtPresetsGoodbyeDPI != null)
                     txtPresetsGoodbyeDPI.Text = LanguageManager.GetText("ui_texts", "presets");
                 
+                if (txtPresetsByeDPI != null)
+                    txtPresetsByeDPI.Text = LanguageManager.GetText("ui_texts", "presets");
+                
                 if (txtPresetZapret != null)
                     txtPresetZapret.Text = LanguageManager.GetText("ui_texts", "preset");
                 
                 if (txtPresetGoodbyeDPI != null)
                     txtPresetGoodbyeDPI.Text = LanguageManager.GetText("ui_texts", "preset");
                 
+                if (txtPresetByeDPI != null)
+                    txtPresetByeDPI.Text = LanguageManager.GetText("ui_texts", "preset");
+                
                 if (txtEditPresetZapret != null)
                     txtEditPresetZapret.Text = LanguageManager.GetText("ui_texts", "edit_preset");
                 
                 if (txtEditPresetGoodbyeDPI != null)
                     txtEditPresetGoodbyeDPI.Text = LanguageManager.GetText("ui_texts", "edit_preset");
+                
+                if (txtEditPresetByeDPI != null)
+                    txtEditPresetByeDPI.Text = LanguageManager.GetText("ui_texts", "edit_preset");
+                
+                if (tooltipByeDPIPreset != null)
+                    tooltipByeDPIPreset.Content = LanguageManager.GetText("ui_texts", "tooltip_preset");
+                
+                if (tooltipByeDPIEditPreset != null)
+                    tooltipByeDPIEditPreset.Content = LanguageManager.GetText("ui_texts", "tooltip_edit_preset");
 
                 // GoodbyeDPI metinleri
                 if (txtUseBlacklist != null)
@@ -5018,7 +5036,7 @@ try {{
                 this.BeginAnimation(HeightProperty, null);
                 
                 // Merkezi boyut hesaplama ve güncelleme
-                AnimateWindowHeight(_byeDPIHeight, TimeSpan.FromMilliseconds(400));
+                UpdateByeDPIWindowSize();
                 
                 this.Width = 600;
                 
@@ -6199,6 +6217,15 @@ try {{
 
         private async Task<bool> InstallByeDPIServiceAsync()
         {
+            string parameters = string.Empty;
+            Dispatcher.Invoke(() =>
+            {
+                if (txtByeDPIParams != null)
+                {
+                    parameters = txtByeDPIParams.Text;
+                }
+            });
+
             return await Task.Run(() =>
             {
                 try
@@ -6219,7 +6246,7 @@ try {{
 
                     // service_install.bat dosyasını sessizce çalıştır
                     File.AppendAllText(logPath, "ByeDPI hizmeti service_install.bat ile kuruluyor...\n");
-                    var installResult = ExecuteCommand("cmd", $"/c \"{serviceInstallPath}\"");
+                    var installResult = ExecuteCommand("cmd", $"/c \"{serviceInstallPath}\" \"{parameters}\"");
                     File.AppendAllText(logPath, $"Hizmet kurulum sonucu (Exit Code): {installResult}\n");
 
                     // Hizmetin başarıyla kurulup kurulmadığını kontrol et
@@ -10833,6 +10860,76 @@ echo Hizmet kurulum işlemi tamamlandı.
             
             // Merkezi boyut hesaplama ve güncelleme
             UpdateGoodbyeDPIWindowSize();
+        }
+
+        private void LoadByeDPIPresets()
+        {
+            try
+            {
+                cmbByeDPIPresets.Items.Clear();
+                cmbByeDPIPresets.Items.Add(new ComboBoxItem { Content = "ByeByeDPI Varsayılan (Android)" });
+                cmbByeDPIPresets.Items.Add(new ComboBoxItem { Content = "SplitWire-Turkey Varsayılan (Eski)" });
+                cmbByeDPIPresets.Items.Add(new ComboBoxItem { Content = "DPI Bypass Hızlı (Split 1)" });
+                cmbByeDPIPresets.Items.Add(new ComboBoxItem { Content = "DPI Bypass Güvenli (OOB 1)" });
+                
+                cmbByeDPIPresets.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"ByeDPI preset'leri yüklenirken hata: {ex.Message}");
+            }
+        }
+
+        private string GetByeDPIPresetParameters(string presetName)
+        {
+            switch (presetName)
+            {
+                case "ByeByeDPI Varsayılan (Android)":
+                    return "-o1 -a1 -r-5+se";
+                case "SplitWire-Turkey Varsayılan (Eski)":
+                    return "--split 1 --disorder 3+s --mod-http=h,d --auto=torst --tlsrec 1+s";
+                case "DPI Bypass Hızlı (Split 1)":
+                    return "--split 1";
+                case "DPI Bypass Güvenli (OOB 1)":
+                    return "-o 1";
+                default:
+                    return "-o1 -a1 -r-5+se";
+            }
+        }
+
+        private void CmbByeDPIPresets_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (cmbByeDPIPresets.SelectedItem is ComboBoxItem selectedItem)
+            {
+                var presetName = selectedItem.Content.ToString();
+                var parameters = GetByeDPIPresetParameters(presetName);
+                txtByeDPIParams.Text = parameters;
+            }
+        }
+
+        private void ChkByeDPIManualParams_Checked(object sender, RoutedEventArgs e)
+        {
+            txtByeDPIParams.Visibility = Visibility.Visible;
+            _byeDPIManualParamsActive = true;
+            UpdateByeDPIWindowSize();
+        }
+
+        private void ChkByeDPIManualParams_Unchecked(object sender, RoutedEventArgs e)
+        {
+            txtByeDPIParams.Visibility = Visibility.Collapsed;
+            _byeDPIManualParamsActive = false;
+            UpdateByeDPIWindowSize();
+        }
+
+        private void UpdateByeDPIWindowSize()
+        {
+            var animationDuration = TimeSpan.FromMilliseconds(400);
+            var totalHeight = _byeDPIBaseHeight;
+            
+            if (_byeDPIManualParamsActive)
+                totalHeight += _byeDPIManualParamsHeight;
+                
+            AnimateWindowHeight(totalHeight, animationDuration);
         }
 
         private void ChkGoodbyeDPIUseBlacklist_Checked(object sender, RoutedEventArgs e)
