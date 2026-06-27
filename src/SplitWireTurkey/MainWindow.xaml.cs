@@ -300,6 +300,8 @@ namespace SplitWireTurkey
         private bool _goodbyeDPIUseBlacklistActive = false;
         private bool _goodbyeDPIEditBlacklistActive = false;
         private bool _byeDPIManualParamsActive = false;
+        private bool _byeDPIEditBlacklistActive = false;
+        private double _byeDPIBlacklistHeight = 120;
 
         // Görev çubuğu karanlık mod desteği
         private bool _isTaskbarDarkModeSupported = false;
@@ -2108,6 +2110,9 @@ namespace SplitWireTurkey
                 
                 if (tooltipGoodbyeDPIEditBlacklist != null)
                     tooltipGoodbyeDPIEditBlacklist.Content = LanguageManager.GetText("ui_texts", "tooltip_goodbyedpi_edit_blacklist");
+
+                if (tooltipByeDPIEditBlacklist != null)
+                    tooltipByeDPIEditBlacklist.Content = LanguageManager.GetText("ui_texts", "tooltip_goodbyedpi_edit_blacklist");
                 
                 if (tooltipGoodbyeDPISaveBlacklist != null)
                     tooltipGoodbyeDPISaveBlacklist.Content = LanguageManager.GetText("ui_texts", "tooltip_goodbyedpi_save_blacklist");
@@ -2237,6 +2242,12 @@ namespace SplitWireTurkey
                 
                 if (txtEditBlacklist != null)
                     txtEditBlacklist.Text = LanguageManager.GetText("ui_texts", "edit_blacklist");
+
+                if (txtEditBlacklistByeDPI != null)
+                    txtEditBlacklistByeDPI.Text = LanguageManager.GetText("ui_texts", "edit_blacklist");
+
+                if (btnByeDPISaveBlacklist != null)
+                    btnByeDPISaveBlacklist.Content = LanguageManager.GetText("buttons", "save");
 
                 // Onarım metinleri
                 if (txtCleanInstallPTB != null)
@@ -2582,6 +2593,12 @@ namespace SplitWireTurkey
                 {
                     tooltipGoodbyeDPIEditBlacklist.Background = tooltipBackground;
                     tooltipGoodbyeDPIEditBlacklist.Foreground = tooltipForeground;
+                }
+
+                if (tooltipByeDPIEditBlacklist != null)
+                {
+                    tooltipByeDPIEditBlacklist.Background = tooltipBackground;
+                    tooltipByeDPIEditBlacklist.Foreground = tooltipForeground;
                 }
                 
                 if (tooltipGoodbyeDPISaveBlacklist != null)
@@ -10938,6 +10955,49 @@ echo Hizmet kurulum işlemi tamamlandı.
             UpdateByeDPIWindowSize();
         }
 
+        private void ChkByeDPIEditBlacklist_Checked(object sender, RoutedEventArgs e)
+        {
+            txtByeDPIBlacklist.Visibility = Visibility.Visible;
+            btnByeDPISaveBlacklist.Visibility = Visibility.Visible;
+            LoadByeDPIBlacklist();
+            _byeDPIEditBlacklistActive = true;
+            UpdateByeDPIWindowSize();
+        }
+
+        private void ChkByeDPIEditBlacklist_Unchecked(object sender, RoutedEventArgs e)
+        {
+            txtByeDPIBlacklist.Visibility = Visibility.Collapsed;
+            btnByeDPISaveBlacklist.Visibility = Visibility.Collapsed;
+            _byeDPIEditBlacklistActive = false;
+            UpdateByeDPIWindowSize();
+        }
+
+        private async void BtnByeDPISaveBlacklist_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var localGoodbyeDPIPath = GetLocalAppDataGoodbyeDPIPath();
+                var blacklistPath = Path.Combine(localGoodbyeDPIPath, "blacklist.txt");
+                
+                var domains = txtByeDPIBlacklist.Text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                var cleanDomains = domains.Where(d => !string.IsNullOrWhiteSpace(d)).ToArray();
+                
+                await File.WriteAllLinesAsync(blacklistPath, cleanDomains);
+
+                // ByeDPI hosts.txt dosyasını da senkronize et
+                SyncByeDPIHostsFile();
+
+                // Eğer ByeDPI servisi çalışıyorsa, yeni blacklist'i alabilmesi için servisi yeniden başlat
+                await RestartByeDPIServiceIfRunningAsync();
+                
+                System.Windows.MessageBox.Show(LanguageManager.GetText("messages", "blacklist_saved_success"), LanguageManager.GetText("messages", "success"), MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(LanguageManager.GetText("messages", "blacklist_save_error").Replace("{0}", ex.Message), LanguageManager.GetText("messages", "error"), MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         private void UpdateByeDPIWindowSize()
         {
             var animationDuration = TimeSpan.FromMilliseconds(400);
@@ -10945,6 +11005,9 @@ echo Hizmet kurulum işlemi tamamlandı.
             
             if (_byeDPIManualParamsActive)
                 totalHeight += _byeDPIManualParamsHeight;
+
+            if (_byeDPIEditBlacklistActive)
+                totalHeight += _byeDPIBlacklistHeight;
                 
             AnimateWindowHeight(totalHeight, animationDuration);
         }
@@ -11961,6 +12024,30 @@ echo Hizmet kurulum işlemi tamamlandı.
             {
                 Debug.WriteLine($"GoodbyeDPI blacklist yüklenirken hata: {ex.Message}");
                 txtGoodbyeDPIBlacklist.Text = string.Empty;
+            }
+        }
+
+        private void LoadByeDPIBlacklist()
+        {
+            try
+            {
+                var localGoodbyeDPIPath = GetLocalAppDataGoodbyeDPIPath();
+                var blacklistPath = Path.Combine(localGoodbyeDPIPath, "blacklist.txt");
+                
+                if (File.Exists(blacklistPath))
+                {
+                    var content = File.ReadAllText(blacklistPath);
+                    txtByeDPIBlacklist.Text = content;
+                }
+                else
+                {
+                    txtByeDPIBlacklist.Text = string.Empty;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"ByeDPI blacklist yüklenirken hata: {ex.Message}");
+                txtByeDPIBlacklist.Text = string.Empty;
             }
         }
 
