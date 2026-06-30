@@ -2,7 +2,7 @@
 ; Inno Setup 6
 
 #define MyAppName "SplitWire-Turkey"
-#define MyAppVersion "1.5.5"
+#define MyAppVersion "2.0.0"
 #define MyAppPublisher "SplitWire-Turkey"
 #define MyAppURL "https://github.com/ctnkyaumt/SplitWire-Turkey"
 #define MyAppExeName "SplitWire-Turkey.exe"

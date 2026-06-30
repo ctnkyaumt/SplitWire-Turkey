@@ -30,17 +30,17 @@
 
 # İndirme ve Kurulum 
 
-## Setup Dosyası ile Kurulum (Tavsiye Edilir) [![Download Setup](https://img.shields.io/badge/Download-Setup-blue?logo=windows)](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-Setup-Windows-1.5.5.exe)
-- **[SplitWire-Turkey Setup](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-Setup-Windows-1.5.5.exe)** kurulum paketini indirip SplitWire-Turkey kurulumunu gerçekleştirin. (SmartScreen "Windows kişisel bilgisayarınızı korudu" uyarısı alırsanız "Ek bilgi" yazısına tıkladıktan sonra "Yine de çalıştır" butonuna tıklayın, virüs taraması ve bu uyarı hakkında bilgi aşağıda verilmiştir)
+## Setup Dosyası ile Kurulum (Tavsiye Edilir) [![Download Setup](https://img.shields.io/badge/Download-Setup-blue?logo=windows)](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/download/2.0.0/SplitWire-Turkey-Setup-Windows-2.0.0.exe)
+- **[SplitWire-Turkey Setup](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/download/2.0.0/SplitWire-Turkey-Setup-Windows-2.0.0.exe)** kurulum paketini indirip SplitWire-Turkey kurulumunu gerçekleştirin. (SmartScreen "Windows kişisel bilgisayarınızı korudu" uyarısı alırsanız "Ek bilgi" yazısına tıkladıktan sonra "Yine de çalıştır" butonuna tıklayın, virüs taraması ve bu uyarı hakkında bilgi aşağıda verilmiştir)
 - **SplitWire-Turkey** uygulamasını açın. 
 - Uygulamanın kullanımı için **Kullanım Rehberleri** başlığını takip edin.
 
-## ZIP Dosyası ile Kullanım (Tavsiye Edilmez) [![Download ZIP](https://img.shields.io/badge/Download-ZIP-blue?logo=windows)](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-ZIP-Windows-1.5.5.zip)
-- **[SplitWire-Turkey ZIP](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-ZIP-Windows-1.5.5.zip)** dosyasını indirerek bir klasöre ayıklayın. 
+## ZIP Dosyası ile Kullanım (Tavsiye Edilmez) [![Download ZIP](https://img.shields.io/badge/Download-ZIP-blue?logo=windows)](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/download/2.0.0/SplitWire-Turkey-ZIP-Windows-2.0.0.zip)
+- **[SplitWire-Turkey ZIP](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/download/2.0.0/SplitWire-Turkey-ZIP-Windows-2.0.0.zip)** dosyasını indirerek bir klasöre ayıklayın. 
 - ZIP dosyasını ayıkladığınız klasörde bulunan **SplitWire-Turkey.exe** uygulamasını açın. (SmartScreen "Windows kişisel bilgisayarınızı korudu" uyarısı alırsanız "Ek bilgi" yazısına tıkladıktan sonra "Yine de çalıştır" butonuna tıklayın, virüs taraması ve bu uyarı hakkında bilgi aşağıda verilmiştir)
 - Uygulamanın kullanımı için **Kullanım Rehberleri** başlığını takip edin.
 
-**Not:** WebCord'u program içerisinden indirme esnasında sorun yaşarsanız WebCord'un halihazırda SplitWire-Turkey ile birleştirilmiş [SplitWire-Turkey-ZIP-Windows-1.5.5-WebCord-Included.zip](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-ZIP-Windows-1.5.5-WebCord-Included.zip)  dosyasını indirerek kullanabilirsiniz.
+**Not:** WebCord'u program içerisinden indirme esnasında sorun yaşarsanız WebCord'un halihazırda SplitWire-Turkey ile birleştirilmiş [SplitWire-Turkey-ZIP-Windows-2.0.0-WebCord-Included.zip](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/download/2.0.0/SplitWire-Turkey-ZIP-Windows-2.0.0-WebCord-Included.zip)  dosyasını indirerek kullanabilirsiniz.
 
 
 
@@ -191,7 +191,7 @@
 > Windows Defender dışında bir antivirüs yazılımı kullanıyorsanız "Program Files\SplitWire-Turkey\res\byedpi\ciadpi.exe" ve "Program Files\SplitWire-Turkey\res\proxifyre\ProxiFyre.exe" isimli yürütülebilir dosyaları için ilgili antivirüs yazılımı güvenlik duvarında izin verecek kuralları el ile eklemeniz gerekebilir. Windows Defender için güvenlik duvarı kuralları otomatik olarak eklenir, ekstra bir işlem yapmanıza gerek yoktur. **Kullandığınız antivirüs yazılımının kendisine ait ağ güvenlik duvarı özelliği yoksa ya da Windows Defender dışında bir antivirüs yazılımı kullanmıyorsanız, bu uyarıyı görmezden gelebilirsiniz.**
 
 > [!NOTE]
-> WinDivert dosyalarının kullanımı Kaspersky isimli antivirüs yazılımı tarafından engellendiği için, sisteminizde Kaspersky yüklü iken GoodbyeDPI ve Zapret sekmelerini kullanamazsınız. Kaspersky'i sisteminizden tamamen kaldırdıktan sonra **[SplitWire-Turkey Setup](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/download/1.5.5/SplitWire-Turkey-Setup-Windows-1.5.5.exe)** dosyasını indirip tekrar kurulum yaparsanız bu sekmeler aktif hale gelecektir. C:\Program Files\SplitWire-Turkey ve C:\Users\\-Kullanıcı Adı-\AppData\Local\SplitWire-Turkey klasörlerini Kaspersky istisnalarına ekleyip, SplitWire-Turkey'i tekrar indirip kurulum yaparak bu sorunu çözmeyi de deneyebilirsiniz.
+> WinDivert dosyalarının kullanımı Kaspersky isimli antivirüs yazılımı tarafından engellendiği için, sisteminizde Kaspersky yüklü iken GoodbyeDPI ve Zapret sekmelerini kullanamazsınız. Kaspersky'i sisteminizden tamamen kaldırdıktan sonra **[SplitWire-Turkey Setup](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/download/2.0.0/SplitWire-Turkey-Setup-Windows-2.0.0.exe)** dosyasını indirip tekrar kurulum yaparsanız bu sekmeler aktif hale gelecektir. C:\Program Files\SplitWire-Turkey ve C:\Users\\-Kullanıcı Adı-\AppData\Local\SplitWire-Turkey klasörlerini Kaspersky istisnalarına ekleyip, SplitWire-Turkey'i tekrar indirip kurulum yaparak bu sorunu çözmeyi de deneyebilirsiniz.
 
 > [!NOTE]
 > Herhangi bir sebeple SplitWire-Turkey v1.5 ve sonrasındaki sürümlerde bulunan WinDivert dosyaları ile ilgili sorun yaşarsanız [SplitWire-Turkey Release 1.0.0](https://github.com/ctnkyaumt/SplitWire-Turkey/releases/tag/1.0.0) adresinden eski sürümü indirip kullanabilirsiniz.
