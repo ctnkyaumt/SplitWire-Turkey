@@ -5388,8 +5388,11 @@ try {{
                         }
                     });
 
-                    // Başarılı kurulum sonrası kaldır butonunu güncelle
+                    // Basarili kurulum sonrasi kaldir butonunu guncelle
                     CheckByeDPIRemoveButtonVisibility();
+
+                    // Fallback akışını çalıştır (bu akış kendi içinde MessageBox gösterir)
+                    await RunByeDPIFallbackFlowAsync(true);
 
                     // DoH/Secure DNS uyarısını göster
                     System.Windows.MessageBox.Show(LanguageManager.GetText("messages", "byedpi_dns_warning"), 
@@ -5551,6 +5554,9 @@ try {{
 
                     // Başarılı kurulum sonrası kaldır butonunu güncelle
                     CheckByeDPIRemoveButtonVisibility();
+
+                    // Fallback akışını çalıştır (bu akış kendi içinde MessageBox gösterir)
+                    await RunByeDPIFallbackFlowAsync(true);
                 }
 
                 // 9. Kurulum tamamlandı mesajı (sessiz)
@@ -5639,8 +5645,11 @@ try {{
                 }
                 else
                 {
-                    // Başarılı kurulum sonrası kaldır butonunu güncelle
+                    // Basarili kurulum sonrasi kaldir butonunu guncelle
                     CheckByeDPIRemoveButtonVisibility();
+
+                    // Fallback akışını çalıştır (bu akış kendi içinde MessageBox gösterir)
+                    await RunByeDPIFallbackFlowAsync(true);
 
                     // DoH/Secure DNS uyarısını göster
                     System.Windows.MessageBox.Show(LanguageManager.GetText("messages", "byedpi_dns_warning"), 
@@ -12425,6 +12434,45 @@ echo Hizmet kurulum işlemi tamamlandı.
             }
         }
 
+        private async Task<bool> TestConnectionToUrlAsync(string url, string keyword = null)
+        {
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    client.Timeout = TimeSpan.FromSeconds(5);
+                    client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+                    using (var response = await client.GetAsync(url))
+                    {
+                        if (response.IsSuccessStatusCode)
+                        {
+                            if (string.IsNullOrEmpty(keyword))
+                            {
+                                return true;
+                            }
+                            var content = await response.Content.ReadAsStringAsync();
+                            return content.Contains(keyword, StringComparison.OrdinalIgnoreCase);
+                        }
+                        return false;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"{url} connection test failed: {ex.Message}");
+                return false;
+            }
+        }
+
+        private async Task<bool> TestByeDPIConnectionsAsync()
+        {
+            var pastebinConnected = await TestConnectionToUrlAsync("https://pastebin.com", "pastebin");
+            if (!pastebinConnected) return false;
+
+            var turkiyeConnected = await TestConnectionToUrlAsync("https://www.turkiye.gov.tr/", "e-Devlet");
+            return turkiyeConnected;
+        }
+
         private async Task<bool> IsGoodbyeDPIServiceRunningAsync()
         {
             try
@@ -12553,6 +12601,100 @@ echo Hizmet kurulum işlemi tamamlandı.
                     catch { }
                     finally { process.Dispose(); }
                 }
+            }
+        }
+
+        private async Task<bool> RunByeDPIFallbackFlowAsync(bool testInitialConnection = true)
+        {
+            var logPath = GetLogPath();
+            File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] ByeDPI bağlantı testi başlatılıyor...\n");
+
+            if (testInitialConnection)
+            {
+                var initiallyConnected = await TestByeDPIConnectionsAsync();
+                if (initiallyConnected)
+                {
+                    File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Mevcut ByeDPI parametreleri ile bağlantı başarılı.\n");
+                    return true;
+                }
+            }
+
+            File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Mevcut parametreler ile bazı siteler yüklenemedi. Parametreler düzenlenerek test ediliyor...\n");
+
+            string currentParams = "";
+            Dispatcher.Invoke(() => currentParams = txtByeDPIParams.Text.Trim());
+
+            var p1 = System.Text.RegularExpressions.Regex.Replace(currentParams, @"--disorder\s+[^\s]+", "").Trim();
+            p1 = System.Text.RegularExpressions.Regex.Replace(p1, @"-d\s+[^\s]+", "").Trim();
+
+            var p2 = System.Text.RegularExpressions.Regex.Replace(p1, @"--fake\s+[^\s]+", "").Trim();
+            p2 = System.Text.RegularExpressions.Regex.Replace(p2, @"--ttl\s+[^\s]+", "").Trim();
+
+            var p3 = System.Text.RegularExpressions.Regex.Replace(p2, @"--tlsrec\s+[^\s]+", "").Trim();
+            
+            var p4 = System.Text.RegularExpressions.Regex.Replace(p3, @"--split\s+[^\s]+", "").Trim();
+            p4 = System.Text.RegularExpressions.Regex.Replace(p4, @"-s\s+[^\s]+", "").Trim();
+
+            var fallbacks = new List<string>();
+            if (p1 != currentParams && !string.IsNullOrEmpty(p1)) fallbacks.Add(p1);
+            if (p2 != p1 && !string.IsNullOrEmpty(p2)) fallbacks.Add(p2);
+            if (p3 != p2 && !string.IsNullOrEmpty(p3)) fallbacks.Add(p3);
+            if (p4 != p3 && !string.IsNullOrEmpty(p4)) fallbacks.Add(p4);
+            if (!fallbacks.Contains("--auto=torst")) fallbacks.Add("--auto=torst");
+            if (!fallbacks.Contains("-o 1")) fallbacks.Add("-o 1");
+
+            bool fallbackSuccess = false;
+            string workingParams = null;
+
+            foreach (var fbParams in fallbacks)
+            {
+                File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Test ediliyor: {fbParams}\n");
+                
+                // Update UI temporarily for installation test
+                Dispatcher.Invoke(() => {
+                    txtByeDPIParams.Text = fbParams;
+                    chkByeDPIManualParams.IsChecked = true;
+                });
+                
+                // Install with new params
+                var installResult = await InstallByeDPIServiceAsync();
+                
+                if (installResult)
+                {
+                    // Kısa bir süre bekle (hizmetin tam kalkması için)
+                    await Task.Delay(1500);
+
+                    if (await TestByeDPIConnectionsAsync())
+                    {
+                        fallbackSuccess = true;
+                        workingParams = fbParams;
+                        break;
+                    }
+                }
+            }
+
+            if (fallbackSuccess)
+            {
+                File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] ByeDPI başarıyla yeni parametrelere güncellendi: {workingParams}\n");
+                System.Windows.MessageBox.Show(
+                    $"Bazı web sitelerine erişimde sorun yaşandığı tespit edildi.\nByeDPI parametreleri otomatik olarak düzeltildi:\n\n{workingParams}",
+                    LanguageManager.GetText("messages", "success"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                    
+                // Custom parametre aktif olarak kaydet
+                Dispatcher.Invoke(() => {
+                    SaveActivePresetToRegistry(REG_BYEDPI_PRESET, "Custom");
+                });
+                return true;
+            }
+            else
+            {
+                File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] HATA: Hiçbir alternatif parametre ile tam erişim sağlanamadı.\n");
+                // Geri al
+                Dispatcher.Invoke(() => txtByeDPIParams.Text = currentParams);
+                await InstallByeDPIServiceAsync();
+                return false;
             }
         }
 
