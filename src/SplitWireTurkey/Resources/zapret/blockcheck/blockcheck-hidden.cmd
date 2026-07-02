@@ -1,7 +1,7 @@
 @echo off
 
 cd /d "%~dp0"
-FOR /F "tokens=* USEBACKQ" %%F IN (`..\cygwin\bin\cygpath -C OEM -a -m zapret\blog-hidden.sh`) DO (
+FOR /F "tokens=* USEBACKQ" %%F IN (`..\cygwin\bin\cygpath -C OEM -a -m zapret2\blog-hidden.sh`) DO (
 SET P='%%F'
 )
 

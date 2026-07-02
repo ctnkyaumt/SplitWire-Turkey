@@ -275,8 +275,9 @@ namespace SplitWireTurkey
         // Sekme boyut yönetimi için değişkenler
         private double _mainPageBaseHeight = 610;
         private double _mainPageAdvancedSettingsHeight = 875;
-        private double _byeDPIBaseHeight = 700;
+        private double _byeDPIBaseHeight = 645;
         private double _byeDPIManualParamsHeight = 80;
+        private double _byeDPIUseBlacklistHeight = 55;
         private double _discordHeight = 800;
         private double _zapretBaseHeight = 670;
         private double _zapretManualParamsHeight = 765;
@@ -300,6 +301,7 @@ namespace SplitWireTurkey
         private bool _goodbyeDPIUseBlacklistActive = false;
         private bool _goodbyeDPIEditBlacklistActive = false;
         private bool _byeDPIManualParamsActive = false;
+        private bool _byeDPIUseBlacklistActive = false;
         private bool _byeDPIEditBlacklistActive = false;
         private double _byeDPIBlacklistHeight = 120;
 
@@ -497,6 +499,11 @@ namespace SplitWireTurkey
             if (chkGoodbyeDPIUseBlacklist != null && chkGoodbyeDPIUseBlacklist.IsChecked != true)
             {
                 chkGoodbyeDPIUseBlacklist.IsChecked = true;
+            }
+            
+            if (chkByeDPIUseBlacklist != null && chkByeDPIUseBlacklist.IsChecked != true)
+            {
+                chkByeDPIUseBlacklist.IsChecked = true;
             }
             
             if (chkByeDPIBrowserTunneling != null && chkByeDPIBrowserTunneling.IsChecked != true)
@@ -2111,6 +2118,9 @@ namespace SplitWireTurkey
                 if (tooltipGoodbyeDPIEditBlacklist != null)
                     tooltipGoodbyeDPIEditBlacklist.Content = LanguageManager.GetText("ui_texts", "tooltip_goodbyedpi_edit_blacklist");
 
+                if (tooltipByeDPIUseBlacklist != null)
+                    tooltipByeDPIUseBlacklist.Content = LanguageManager.GetText("ui_texts", "tooltip_goodbyedpi_use_blacklist");
+
                 if (tooltipByeDPIEditBlacklist != null)
                     tooltipByeDPIEditBlacklist.Content = LanguageManager.GetText("ui_texts", "tooltip_goodbyedpi_edit_blacklist");
                 
@@ -2242,6 +2252,9 @@ namespace SplitWireTurkey
                 
                 if (txtEditBlacklist != null)
                     txtEditBlacklist.Text = LanguageManager.GetText("ui_texts", "edit_blacklist");
+
+                if (txtUseBlacklistByeDPI != null)
+                    txtUseBlacklistByeDPI.Text = LanguageManager.GetText("ui_texts", "use_blacklist");
 
                 if (txtEditBlacklistByeDPI != null)
                     txtEditBlacklistByeDPI.Text = LanguageManager.GetText("ui_texts", "edit_blacklist");
@@ -6243,13 +6256,26 @@ try {{
         private async Task<bool> InstallByeDPIServiceAsync()
         {
             string parameters = string.Empty;
+            bool useBlacklist = false;
             Dispatcher.Invoke(() =>
             {
                 if (txtByeDPIParams != null)
                 {
-                    parameters = txtByeDPIParams.Text;
+                    parameters = txtByeDPIParams.Text.Trim();
+                }
+                if (chkByeDPIUseBlacklist != null)
+                {
+                    useBlacklist = chkByeDPIUseBlacklist.IsChecked == true;
                 }
             });
+
+            if (useBlacklist)
+            {
+                if (!parameters.Contains("-H") && !parameters.Contains("--hosts"))
+                {
+                    parameters += " -H hosts.txt";
+                }
+            }
 
             return await Task.Run(() =>
             {
@@ -9685,17 +9711,17 @@ Get-DnsClientDohServerAddress
                 
                 foreach (var line in lines.Skip(1))
                 {
-                    if (line.Contains("--wf-tcp=443"))
+                    if (line.Contains("winws2"))
                     {
-                        var tcpIndex = line.IndexOf("--wf-tcp=443");
-                        if (tcpIndex >= 0)
+                        var winwsIndex = line.IndexOf("winws2");
+                        if (winwsIndex >= 0)
                         {
-                            parameters = line.Substring(tcpIndex + "--wf-tcp=443".Length).Trim();
+                            parameters = line.Substring(winwsIndex + "winws2".Length).Trim();
                             File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Parametreler bulundu: {parameters}\n");
-                                        break;
-                                    }
-                                }
-                            }
+                            break;
+                        }
+                    }
+                }
 
                 if (string.IsNullOrEmpty(parameters))
                 {
@@ -9709,8 +9735,9 @@ Get-DnsClientDohServerAddress
                 // Yeni hizmet kurulum yöntemi: service_install_splitwireturkey.cmd
                 File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Yeni hizmet kurulum yöntemi kullanılıyor...\n");
                 
-                // Parametreleri birleştir: temel parametreler + blockcheck'den gelen parametreler
-                var fullParameters = $"--wf-tcp=80,443 --wf-udp=443,50000,50100 {parameters}";
+                // Parametreleri temizle ve v2 formatında birleştir
+                var cleanParams = CleanZapretV2Parameters(parameters);
+                var fullParameters = $"--wf-tcp-out=80,443 --wf-udp-out=443,50000-50100 --wf-dup-check=0 --wf-tcp-empty=1 --lua-init=\"%~dp0lua\\zapret-lib.lua\" --lua-init=\"%~dp0lua\\zapret-antidpi.lua\" {cleanParams}";
                 File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Birleştirilmiş parametreler: {fullParameters}\n");
                 
                 // Yeni hizmet kurulum dosyasını oluştur
@@ -9857,6 +9884,33 @@ echo Hizmet kurulum işlemi tamamlandı.
                 File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Hizmet kurulum scripti oluşturma hatası: {ex.Message}\n");
                 throw new Exception($"Hizmet kurulum scripti oluşturma hatası: {ex.Message}", ex);
             }
+        }
+
+        private string CleanZapretV2Parameters(string rawParameters)
+        {
+            if (string.IsNullOrWhiteSpace(rawParameters)) return string.Empty;
+            
+            var args = rawParameters.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            var cleanArgs = new List<string>();
+            for (int i = 0; i < args.Length; i++)
+            {
+                var arg = args[i].Trim();
+                if (string.IsNullOrWhiteSpace(arg)) continue;
+                if (arg.StartsWith("--wf-tcp") || 
+                    arg.StartsWith("--wf-udp") || 
+                    arg.StartsWith("--wf-l3") || 
+                    arg.StartsWith("--ipset") || 
+                    arg.StartsWith("--lua-init") ||
+                    arg == "winws" ||
+                    arg == "winws.exe" ||
+                    arg == "winws2" || 
+                    arg == "winws2.exe")
+                {
+                    continue;
+                }
+                cleanArgs.Add(arg);
+            }
+            return string.Join(" ", cleanArgs);
         }
 
         private async Task<bool> VerifyZapretService()
@@ -10155,8 +10209,9 @@ echo Hizmet kurulum işlemi tamamlandı.
                 var localZapretPath = GetLocalAppDataZapretPath();
                 var serviceInstallScriptPath = Path.Combine(localZapretPath, "zapret-winws", "service_install_splitwireturkey.cmd");
 
-                // Parametreleri birleştir (--wf-tcp=80,443 --wf-udp=443,50000,50100 + kullanıcı parametreleri)
-                var combinedParameters = $"--wf-tcp=80,443 --wf-udp=443,50000,50100 {parameters}";
+                // Parametreleri temizle ve v2 formatında birleştir
+                var cleanParams = CleanZapretV2Parameters(parameters);
+                var combinedParameters = $"--wf-tcp-out=80,443 --wf-udp-out=443,50000-50100 --wf-dup-check=0 --wf-tcp-empty=1 --lua-init=\"%~dp0lua\\zapret-lib.lua\" --lua-init=\"%~dp0lua\\zapret-antidpi.lua\" {cleanParams}";
                 
                 File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Birleştirilmiş parametreler: {combinedParameters}\n");
 
@@ -10905,6 +10960,10 @@ echo Hizmet kurulum işlemi tamamlandı.
                 cmbByeDPIPresets.Items.Add(new ComboBoxItem { Content = "SplitWire-Turkey Varsayılan (Eski)" });
                 cmbByeDPIPresets.Items.Add(new ComboBoxItem { Content = "DPI Bypass Hızlı (Split 1)" });
                 cmbByeDPIPresets.Items.Add(new ComboBoxItem { Content = "DPI Bypass Güvenli (OOB 1)" });
+                cmbByeDPIPresets.Items.Add(new ComboBoxItem { Content = "Fake TLS (TTL 8)" });
+                cmbByeDPIPresets.Items.Add(new ComboBoxItem { Content = "DISOOB + Split" });
+                cmbByeDPIPresets.Items.Add(new ComboBoxItem { Content = "Auto Detect (torst)" });
+                cmbByeDPIPresets.Items.Add(new ComboBoxItem { Content = "Disorder + Fake (Agresif)" });
                 
                 cmbByeDPIPresets.SelectedIndex = 0;
             }
@@ -10926,6 +10985,14 @@ echo Hizmet kurulum işlemi tamamlandı.
                     return "--split 1";
                 case "DPI Bypass Güvenli (OOB 1)":
                     return "-o 1";
+                case "Fake TLS (TTL 8)":
+                    return "--disorder 1 --fake -1 --ttl 8 --tlsrec 1+s";
+                case "DISOOB + Split":
+                    return "--disoob 1 --split 1+s --mod-http=h,d --tlsrec 1+s";
+                case "Auto Detect (torst)":
+                    return "--auto=torst";
+                case "Disorder + Fake (Agresif)":
+                    return "--disorder 1 --fake -1 --ttl 5 --auto=torst --tlsrec 1+s --mod-http=h,d";
                 default:
                     return "-o1 -a1 -r-5+se";
             }
@@ -10952,6 +11019,24 @@ echo Hizmet kurulum işlemi tamamlandı.
         {
             txtByeDPIParams.Visibility = Visibility.Collapsed;
             _byeDPIManualParamsActive = false;
+            UpdateByeDPIWindowSize();
+        }
+
+        private void ChkByeDPIUseBlacklist_Checked(object sender, RoutedEventArgs e)
+        {
+            editBlacklistPanelByeDPI.Visibility = Visibility.Visible;
+            _byeDPIUseBlacklistActive = true;
+            UpdateByeDPIWindowSize();
+        }
+
+        private void ChkByeDPIUseBlacklist_Unchecked(object sender, RoutedEventArgs e)
+        {
+            editBlacklistPanelByeDPI.Visibility = Visibility.Collapsed;
+            chkByeDPIEditBlacklist.IsChecked = false;
+            txtByeDPIBlacklist.Visibility = Visibility.Collapsed;
+            btnByeDPISaveBlacklist.Visibility = Visibility.Collapsed;
+            _byeDPIUseBlacklistActive = false;
+            _byeDPIEditBlacklistActive = false;
             UpdateByeDPIWindowSize();
         }
 
@@ -11005,6 +11090,9 @@ echo Hizmet kurulum işlemi tamamlandı.
             
             if (_byeDPIManualParamsActive)
                 totalHeight += _byeDPIManualParamsHeight;
+
+            if (_byeDPIUseBlacklistActive)
+                totalHeight += _byeDPIUseBlacklistHeight;
 
             if (_byeDPIEditBlacklistActive)
                 totalHeight += _byeDPIBlacklistHeight;
@@ -12169,7 +12257,12 @@ echo Hizmet kurulum işlemi tamamlandı.
                     client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
                     using (var response = await client.GetAsync("https://pastebin.com"))
                     {
-                        return true;
+                        if (response.IsSuccessStatusCode)
+                        {
+                            var content = await response.Content.ReadAsStringAsync();
+                            return content.Contains("pastebin", StringComparison.OrdinalIgnoreCase);
+                        }
+                        return false;
                     }
                 }
             }
@@ -12277,7 +12370,7 @@ echo Hizmet kurulum işlemi tamamlandı.
                 process = new Process { StartInfo = startInfo };
                 process.Start();
 
-                await Task.Delay(3000);
+                await Task.Delay(5000);
 
                 // If the process has exited, it means it crashed or failed to run
                 if (process.HasExited)
@@ -13394,6 +13487,9 @@ echo Hizmet kurulum işlemi tamamlandı.
                         "chkGoodbyeDPIUseBlacklist",
                         "chkGoodbyeDPIEditBlacklist",
                         "chkByeDPIBrowserTunneling", // Added for dark mode support
+                        "chkByeDPIManualParams",
+                        "chkByeDPIUseBlacklist",
+                        "chkByeDPIEditBlacklist",
                         "chkDiscordUninstallStandard", // Added for Onarım sekmesi
                         "chkWebCordShortcut" // Added for WebCord shortcut switch
                     };

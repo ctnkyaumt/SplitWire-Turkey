@@ -16,10 +16,10 @@ Alternatif 14:-5 --set-ttl 4
 Alternatif 15:-6 --set-ttl 4
 Alternatif 16:-7 --set-ttl 4
 Alternatif 17:-8 --set-ttl 4
-Alternatif 14:-5 --set-ttl 7
-Alternatif 15:-6 --set-ttl 7
-Alternatif 16:-7 --set-ttl 7
-Alternatif 17:-8 --set-ttl 7
-Alternatif 18:-9 --set-ttl 3
-Alternatif 19:-9 --set-ttl 4
-Alternatif 20:-9 --set-ttl 7
+Alternatif 18:-5 --set-ttl 7
+Alternatif 19:-6 --set-ttl 7
+Alternatif 20:-7 --set-ttl 7
+Alternatif 21:-8 --set-ttl 7
+Alternatif 22:-9 --set-ttl 3
+Alternatif 23:-9 --set-ttl 4
+Alternatif 24:-9 --set-ttl 7
