@@ -19,6 +19,27 @@ export REPEATS=${REPEATS:-"1"}
 export PARALLEL=${PARALLEL:-"0"}
 export SCANLEVEL=${SCANLEVEL:-"quick"}
 
+# Curl zaman aşımını düşürerek taramayı hızlandır (Default: 2)
+export CURL_MAX_TIME=1
+export CURL_MAX_TIME_QUIC=1
+export CURL_MAX_TIME_DOH=1
+
+# Windows/WinDivert için gereksiz veya yavaş olan testleri devre dışı bırak
+export NOTEST_SEQOVL_HTTP=1
+export NOTEST_SEQOVL_HTTPS=1
+export NOTEST_SYNDATA_HTTP=1
+export NOTEST_SYNDATA_HTTPS=1
+
+# Hızlı (quick) tarama modunda daha fazla testi devre dışı bırakarak süreyi 1-2 dakikaya indir
+if [ "$SCANLEVEL" = "quick" ]; then
+    export NOTEST_FAKE_MULTI_HTTP=1
+    export NOTEST_FAKE_MULTI_HTTPS=1
+    export NOTEST_FAKE_FAKED_HTTP=1
+    export NOTEST_FAKE_FAKED_HTTPS=1
+    export NOTEST_FAKE_HOSTFAKE_HTTP=1
+    export NOTEST_FAKE_HOSTFAKE_HTTPS=1
+fi
+
 # Blockcheck'i çalıştır ve çıktıyı log dosyasına yönlendir
 "$EXEDIR/blockcheck.sh" 2>&1 | tee "$EXEDIR/../blockcheck.log"
 
