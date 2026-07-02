@@ -9572,14 +9572,50 @@ Get-DnsClientDohServerAddress
                 File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Zapret kurulum süreci başlatılıyor...\n");
                 
                 var localZapretPath = GetLocalAppDataZapretPath();
-                var blockcheckShPath = Path.Combine(localZapretPath, "blockcheck", "zapret", "blockcheck.sh");
+                var sourceZapretPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "res", "zapret");
+                
+                // Zapret Otomatik Kurulum için özel dosyaları her zaman güncel kopyala
+                var sourceHiddenCmdPath = Path.Combine(sourceZapretPath, "blockcheck", "blockcheck-hidden.cmd");
+                var destHiddenCmdPath = Path.Combine(localZapretPath, "blockcheck", "blockcheck-hidden.cmd");
+                var sourceHiddenShPath = Path.Combine(sourceZapretPath, "blockcheck", "zapret2", "blog-hidden.sh");
+                var destHiddenShPath = Path.Combine(localZapretPath, "blockcheck", "zapret2", "blog-hidden.sh");
+
+                if (File.Exists(sourceHiddenCmdPath))
+                {
+                    try
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(destHiddenCmdPath));
+                        File.Copy(sourceHiddenCmdPath, destHiddenCmdPath, true);
+                        File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] blockcheck-hidden.cmd güncel haliyle kopyalandı.\n");
+                    }
+                    catch (Exception ex)
+                    {
+                        File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] UYARI: blockcheck-hidden.cmd kopyalama hatası: {ex.Message}\n");
+                    }
+                }
+
+                if (File.Exists(sourceHiddenShPath))
+                {
+                    try
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(destHiddenShPath));
+                        File.Copy(sourceHiddenShPath, destHiddenShPath, true);
+                        File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] blog-hidden.sh güncel haliyle kopyalandı.\n");
+                    }
+                    catch (Exception ex)
+                    {
+                        File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] UYARI: blog-hidden.sh kopyalama hatası: {ex.Message}\n");
+                    }
+                }
+                
+                var blogHiddenShPath = Path.Combine(localZapretPath, "blockcheck", "zapret2", "blog-hidden.sh");
                 
                 File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Local Zapret yolu: {localZapretPath}\n");
-                File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Blockcheck.sh yolu: {blockcheckShPath}\n");
+                File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] blog-hidden.sh yolu: {blogHiddenShPath}\n");
                 
                 // SCANLEVEL ayarını güncelle
                 File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] SCANLEVEL ayarı güncelleniyor...\n");
-                await UpdateScanLevel(blockcheckShPath);
+                await UpdateScanLevel(blogHiddenShPath);
                 File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] SCANLEVEL ayarı güncellendi.\n");
                 
                 // Zapret Otomatik Kurulum için özel blockcheck-hidden.cmd dosyasını kullan
