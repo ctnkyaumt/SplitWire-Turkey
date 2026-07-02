@@ -5381,9 +5381,10 @@ try {{
                     // Save active preset to registry
                     Dispatcher.Invoke(() =>
                     {
-                        if (cmbByeDPIPresets.SelectedItem is ComboBoxItem selectedItem)
+                        var presetName = cmbByeDPIPresets.SelectedItem is ComboBoxItem cb ? cb.Content.ToString() : cmbByeDPIPresets.SelectedItem?.ToString();
+                        if (!string.IsNullOrEmpty(presetName))
                         {
-                            SaveActivePresetToRegistry(REG_BYEDPI_PRESET, selectedItem.Content.ToString());
+                            SaveActivePresetToRegistry(REG_BYEDPI_PRESET, presetName);
                         }
                     });
 
@@ -5541,9 +5542,10 @@ try {{
                     // Save active preset to registry
                     Dispatcher.Invoke(() =>
                     {
-                        if (cmbByeDPIPresets.SelectedItem is ComboBoxItem selectedItem)
+                        var presetName = cmbByeDPIPresets.SelectedItem is ComboBoxItem cb ? cb.Content.ToString() : cmbByeDPIPresets.SelectedItem?.ToString();
+                        if (!string.IsNullOrEmpty(presetName))
                         {
-                            SaveActivePresetToRegistry(REG_BYEDPI_PRESET, selectedItem.Content.ToString());
+                            SaveActivePresetToRegistry(REG_BYEDPI_PRESET, presetName);
                         }
                     });
 
@@ -11744,9 +11746,10 @@ echo Hizmet kurulum işlemi tamamlandı.
                     // Save active preset to registry
                     Dispatcher.Invoke(() =>
                     {
-                        if (cmbGoodbyeDPIPresets.SelectedItem is ComboBoxItem selectedItem)
+                        var presetName = cmbGoodbyeDPIPresets.SelectedItem is ComboBoxItem cb ? cb.Content.ToString() : cmbGoodbyeDPIPresets.SelectedItem?.ToString();
+                        if (!string.IsNullOrEmpty(presetName))
                         {
-                            SaveActivePresetToRegistry(REG_GOODBYEDPI_PRESET, selectedItem.Content.ToString());
+                            SaveActivePresetToRegistry(REG_GOODBYEDPI_PRESET, presetName);
                         }
                     });
                     
