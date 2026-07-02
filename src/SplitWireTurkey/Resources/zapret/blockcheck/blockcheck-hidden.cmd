@@ -10,4 +10,4 @@ REM HIDDEN_MODE=1 çevre değişkeni ile bash penceresi gizlenecek
 set HIDDEN_MODE=1
 
 REM Bash script'i çalıştır (MainWindow.xaml.cs'de pencere gizlenecek)
-"%~dp0..\tools\elevator" ..\cygwin\bin\bash -i "%P%"
+"%~dp0..\tools\elevator" ..\cygwin\bin\bash "%P%"

@@ -93,6 +93,9 @@ namespace SplitWireTurkey
         private const string REG_VERSION = "Version";
         private const string REG_LANGUAGE = "Language";
         private const string REG_AUTO_DNS_CHANGE = "AutoDNSChange";
+        private const string REG_GOODBYEDPI_PRESET = "GoodbyeDPIPreset";
+        private const string REG_BYEDPI_PRESET = "ByeDPIPreset";
+        private const string REG_ZAPRET_PRESET = "ZapretPreset";
         
         // Dil değişkenleri
         private string _currentLanguage = "TR";
@@ -758,6 +761,44 @@ namespace SplitWireTurkey
             {
                 Debug.WriteLine($"Auto DNS Change ayarı Registry'ye kaydedilemedi: {ex.Message}");
             }
+        }
+
+        private void SaveActivePresetToRegistry(string keyName, string presetName)
+        {
+            try
+            {
+                using (var key = Registry.CurrentUser.CreateSubKey(REG_KEY_PATH))
+                {
+                    if (key != null)
+                    {
+                        key.SetValue(keyName, presetName, RegistryValueKind.String);
+                        Debug.WriteLine($"Active preset saved to registry: {keyName} = {presetName}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error saving active preset to registry: {ex.Message}");
+            }
+        }
+
+        private string LoadActivePresetFromRegistry(string keyName)
+        {
+            try
+            {
+                using (var key = Registry.CurrentUser.OpenSubKey(REG_KEY_PATH))
+                {
+                    if (key != null)
+                    {
+                        return key.GetValue(keyName) as string;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error loading active preset from registry: {ex.Message}");
+            }
+            return null;
         }
         
         /// <summary>
@@ -5337,6 +5378,15 @@ try {{
                 }
                 else
                 {
+                    // Save active preset to registry
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (cmbByeDPIPresets.SelectedItem is ComboBoxItem selectedItem)
+                        {
+                            SaveActivePresetToRegistry(REG_BYEDPI_PRESET, selectedItem.Content.ToString());
+                        }
+                    });
+
                     // Başarılı kurulum sonrası kaldır butonunu güncelle
                     CheckByeDPIRemoveButtonVisibility();
 
@@ -5488,6 +5538,15 @@ try {{
                 }
                 else
                 {
+                    // Save active preset to registry
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (cmbByeDPIPresets.SelectedItem is ComboBoxItem selectedItem)
+                        {
+                            SaveActivePresetToRegistry(REG_BYEDPI_PRESET, selectedItem.Content.ToString());
+                        }
+                    });
+
                     // Başarılı kurulum sonrası kaldır butonunu güncelle
                     CheckByeDPIRemoveButtonVisibility();
                 }
@@ -7983,9 +8042,11 @@ Get-DnsClientDohServerAddress
                     }
                 }
 
+                var activePreset = LoadActivePresetFromRegistry(REG_ZAPRET_PRESET);
+                
                 if (cmbZapretPresets.Items.Count > 0)
                 {
-                    cmbZapretPresets.SelectedIndex = 0;
+                    SelectActivePresetInComboBox(cmbZapretPresets, activePreset);
                 }
                 else
                 {
@@ -8071,8 +8132,8 @@ Get-DnsClientDohServerAddress
                 // Zapret Otomatik Kurulum için özel dosyaları kopyala
                 var sourceHiddenCmdPath = Path.Combine(sourceZapretPath, "blockcheck", "blockcheck-hidden.cmd");
                 var destHiddenCmdPath = Path.Combine(localZapretPath, "blockcheck", "blockcheck-hidden.cmd");
-                var sourceHiddenShPath = Path.Combine(sourceZapretPath, "blockcheck", "zapret", "blog-hidden.sh");
-                var destHiddenShPath = Path.Combine(localZapretPath, "blockcheck", "zapret", "blog-hidden.sh");
+                var sourceHiddenShPath = Path.Combine(sourceZapretPath, "blockcheck", "zapret2", "blog-hidden.sh");
+                var destHiddenShPath = Path.Combine(localZapretPath, "blockcheck", "zapret2", "blog-hidden.sh");
                 
                 // blockcheck-hidden.cmd kopyala
                 if (File.Exists(sourceHiddenCmdPath))
@@ -10106,6 +10167,16 @@ echo Hizmet kurulum işlemi tamamlandı.
                 if (success)
                 {
                     File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Zapret özel hizmet kurulumu başarıyla tamamlandı.\n");
+                    
+                    // Save active preset to registry
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (cmbZapretPresets.SelectedItem != null)
+                        {
+                            SaveActivePresetToRegistry(REG_ZAPRET_PRESET, cmbZapretPresets.SelectedItem.ToString());
+                        }
+                    });
+
                     System.Windows.MessageBox.Show(LanguageManager.GetText("messages", "zapret_custom_service_success"), 
                         LanguageManager.GetText("messages", "success"), MessageBoxButton.OK, MessageBoxImage.Information);
                     
@@ -10965,7 +11036,8 @@ echo Hizmet kurulum işlemi tamamlandı.
                 cmbByeDPIPresets.Items.Add(new ComboBoxItem { Content = "Auto Detect (torst)" });
                 cmbByeDPIPresets.Items.Add(new ComboBoxItem { Content = "Disorder + Fake (Agresif)" });
                 
-                cmbByeDPIPresets.SelectedIndex = 0;
+                var activePreset = LoadActivePresetFromRegistry(REG_BYEDPI_PRESET);
+                SelectActivePresetInComboBox(cmbByeDPIPresets, activePreset);
             }
             catch (Exception ex)
             {
@@ -11633,6 +11705,15 @@ echo Hizmet kurulum işlemi tamamlandı.
                 {
                     File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Hizmet kurulumu başarıyla tamamlandı!\n");
                     
+                    // Save active preset to registry
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (cmbGoodbyeDPIPresets.SelectedItem is ComboBoxItem selectedItem)
+                        {
+                            SaveActivePresetToRegistry(REG_GOODBYEDPI_PRESET, selectedItem.Content.ToString());
+                        }
+                    });
+                    
                     // Bağlantıyı doğrula ve gerekirse fallback akışını çalıştır
                     var initiallyConnected = await TestConnectionToPastebinAsync();
                     if (initiallyConnected)
@@ -12005,12 +12086,50 @@ echo Hizmet kurulum işlemi tamamlandı.
             infoWindow.ShowDialog();
         }
 
+        private void SelectActivePresetInComboBox(System.Windows.Controls.ComboBox comboBox, string activePreset)
+        {
+            if (string.IsNullOrEmpty(activePreset) || comboBox.Items.Count == 0)
+            {
+                if (comboBox.Items.Count > 0) comboBox.SelectedIndex = 0;
+                return;
+            }
+
+            bool selected = false;
+            foreach (var item in comboBox.Items)
+            {
+                if (item is ComboBoxItem cbItem)
+                {
+                    if (cbItem.Content.ToString() == activePreset)
+                    {
+                        comboBox.SelectedItem = cbItem;
+                        selected = true;
+                        break;
+                    }
+                }
+                else if (item is string strItem)
+                {
+                    if (strItem == activePreset)
+                    {
+                        comboBox.SelectedItem = strItem;
+                        selected = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!selected && comboBox.Items.Count > 0)
+            {
+                comboBox.SelectedIndex = 0;
+            }
+        }
+
         private void LoadGoodbyeDPIPresets()
         {
             try
             {
                 var localGoodbyeDPIPath = GetLocalAppDataGoodbyeDPIPath();
                 var presetsPath = Path.Combine(localGoodbyeDPIPath, "presets.txt");
+                var activePreset = LoadActivePresetFromRegistry(REG_GOODBYEDPI_PRESET);
                 
                 if (File.Exists(presetsPath))
                 {
@@ -12026,41 +12145,35 @@ echo Hizmet kurulum işlemi tamamlandı.
                         }
                     }
                     
-                    if (cmbGoodbyeDPIPresets.Items.Count > 0)
-                    {
-                        cmbGoodbyeDPIPresets.SelectedIndex = 0;
-                    }
+                    SelectActivePresetInComboBox(cmbGoodbyeDPIPresets, activePreset);
                 }
                 else
                 {
                     // Varsayılan preset'leri ekle
                     var defaultPresets = new[] { "Standart", "Alternatif", "Alternatif 2", "Alternatif 3" };
+                    cmbGoodbyeDPIPresets.Items.Clear();
                     foreach (var preset in defaultPresets)
                     {
                         cmbGoodbyeDPIPresets.Items.Add(new ComboBoxItem { Content = preset });
                     }
                     
-                    if (cmbGoodbyeDPIPresets.Items.Count > 0)
-                    {
-                        cmbGoodbyeDPIPresets.SelectedIndex = 0;
-                    }
+                    SelectActivePresetInComboBox(cmbGoodbyeDPIPresets, activePreset);
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"GoodbyeDPI preset'leri yüklenirken hata: {ex.Message}");
                 
+                var activePreset = LoadActivePresetFromRegistry(REG_GOODBYEDPI_PRESET);
                 // Hata durumunda varsayılan preset'leri ekle
                 var defaultPresets = new[] { "Standart", "Alternatif", "Alternatif 2", "Alternatif 3" };
+                cmbGoodbyeDPIPresets.Items.Clear();
                 foreach (var preset in defaultPresets)
                 {
                     cmbGoodbyeDPIPresets.Items.Add(new ComboBoxItem { Content = preset });
                 }
                 
-                if (cmbGoodbyeDPIPresets.Items.Count > 0)
-                {
-                    cmbGoodbyeDPIPresets.SelectedIndex = 0;
-                }
+                SelectActivePresetInComboBox(cmbGoodbyeDPIPresets, activePreset);
             }
         }
 
@@ -12493,6 +12606,7 @@ echo Hizmet kurulum işlemi tamamlandı.
                 if (installSuccess)
                 {
                     File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Hizmet başarıyla yeni preset ile güncellendi.\n");
+                    SaveActivePresetToRegistry(REG_GOODBYEDPI_PRESET, workingPresetName);
                     System.Windows.MessageBox.Show(
                         LanguageManager.GetText("messages", "goodbyedpi_fallback_success")?.Replace("{0}", workingPresetName) 
                         ?? $"GoodbyeDPI successfully fell back to working preset: {workingPresetName}",

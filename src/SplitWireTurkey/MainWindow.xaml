@@ -447,7 +447,7 @@
                     Visibility="Collapsed"
                     Orientation="Horizontal">
             
-            <!-- Turkish Flag -->
+            <!-- Turkish -->
             <Button x:Name="btnLanguageTR" 
                     Style="{StaticResource InfoButtonStyle}"
                     Margin="2,0"
@@ -455,9 +455,7 @@
                     Tag="TR"
                     ToolTipService.InitialShowDelay="0"
                     ToolTipService.ShowDuration="5000">
-                <Image Source="pack://application:,,,/Resources/Flags/tr_flag.png" 
-                       Width="24" Height="24" 
-                       Stretch="Uniform"/>
+                <TextBlock Text="TR" FontFamily="Poppins Bold" FontSize="10" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                 <Button.ToolTip>
                     <ToolTip Content="Türkçe" 
                              FontFamily="Poppins Regular"
@@ -465,7 +463,7 @@
                 </Button.ToolTip>
             </Button>
             
-            <!-- English Flag -->
+            <!-- English -->
             <Button x:Name="btnLanguageEN" 
                     Style="{StaticResource InfoButtonStyle}"
                     Margin="2,0"
@@ -473,9 +471,7 @@
                     Tag="EN"
                     ToolTipService.InitialShowDelay="0"
                     ToolTipService.ShowDuration="5000">
-                <Image Source="pack://application:,,,/Resources/Flags/gb_flag.png" 
-                       Width="24" Height="24" 
-                       Stretch="Uniform"/>
+                <TextBlock Text="EN" FontFamily="Poppins Bold" FontSize="10" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                 <Button.ToolTip>
                     <ToolTip Content="English" 
                              FontFamily="Poppins Regular"
@@ -483,7 +479,7 @@
                 </Button.ToolTip>
             </Button>
             
-            <!-- Russian Flag -->
+            <!-- Russian -->
             <Button x:Name="btnLanguageRU" 
                     Style="{StaticResource InfoButtonStyle}"
                     Margin="2,0"
@@ -491,9 +487,7 @@
                     Tag="RU"
                     ToolTipService.InitialShowDelay="0"
                     ToolTipService.ShowDuration="5000">
-                <Image Source="pack://application:,,,/Resources/Flags/ru_flag.png" 
-                       Width="24" Height="24" 
-                       Stretch="Uniform"/>
+                <TextBlock Text="RU" FontFamily="Poppins Bold" FontSize="10" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                 <Button.ToolTip>
                     <ToolTip Content="Русский" 
                              FontFamily="Poppins Regular"
@@ -501,7 +495,7 @@
                 </Button.ToolTip>
             </Button>
             
-            <!-- Spanish Flag -->
+            <!-- Spanish -->
             <Button x:Name="btnLanguageES" 
                     Style="{StaticResource InfoButtonStyle}"
                     Margin="2,0"
@@ -509,9 +503,7 @@
                     Tag="ES"
                     ToolTipService.InitialShowDelay="0"
                     ToolTipService.ShowDuration="5000">
-                <Image Source="pack://application:,,,/Resources/Flags/es_flag.png" 
-                       Width="24" Height="24" 
-                       Stretch="Uniform"/>
+                <TextBlock Text="ES" FontFamily="Poppins Bold" FontSize="10" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                 <Button.ToolTip>
                     <ToolTip Content="Español" 
                              FontFamily="Poppins Regular"
