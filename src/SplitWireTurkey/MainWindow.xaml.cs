@@ -9634,9 +9634,9 @@ Get-DnsClientDohServerAddress
                         CreateNoWindow = true,
                         WindowStyle = ProcessWindowStyle.Hidden,
                         WorkingDirectory = Path.GetDirectoryName(blockcheckCmdPath),
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        RedirectStandardInput = true
+                        RedirectStandardOutput = false,
+                        RedirectStandardError = false,
+                        RedirectStandardInput = false
                     };
                     
                     File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Process başlatılıyor...\n");
