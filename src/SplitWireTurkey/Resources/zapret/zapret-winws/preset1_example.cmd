@@ -1,4 +1,4 @@
-start "zapret" /min "%~dp0winws.exe" ^
+start "zapret" /min "%~dp0winws2.exe" ^
 --wf-tcp=80,443 ^
 --wf-raw-part=@"%~dp0windivert.filter\windivert_part.discord_media.txt" ^
 --wf-raw-part=@"%~dp0windivert.filter\windivert_part.stun.txt" ^

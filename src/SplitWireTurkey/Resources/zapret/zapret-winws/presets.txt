@@ -1,8 +1,7 @@
-Türk Telekom:--wf-tcp=80,443 --wf-udp=443,50000,50100 --dpi-desync=fake --dpi-desync-ttl=4
-Türk Telekom Alternatif:--wf-tcp=80,443 --wf-udp=443,50000,50100 --dpi-desync=fake --dpi-desync-ttl=3
-SuperOnline:--wf-tcp=80,443 --wf-udp=443,50000,50100 --dpi-desync=fake --dpi-desync-fooling=md5sig
-SuperOnline Alternatif:--wf-tcp=80,443 --wf-udp=443,50000-50099 --dpi-desync=fake --dpi-desync-fooling=md5sig --dpi-desync-ttl=3
-Kablonet:--wf-tcp=80,443 --wf-udp=443,50000,50100 --dpi-desync=fake --dpi-desync-ttl=4
-Turkcell Hotspot:--wf-tcp=80,443 --wf-udp=443,50000,50100 --dpi-desync=fake --dpi-desync-ttl=1 --dpi-desync-autottl=3
-Vodafone Hotspot:--wf-tcp=80,443 --wf-udp=443,50000,50100 --dpi-desync=multisplit --dpi-desync-split-pos=2
-
+Türk Telekom:--wf-tcp-out=80,443 --wf-udp-out=443,50000,50100 --lua-desync=fake:ip_ttl=4
+Türk Telekom Alternatif:--wf-tcp-out=80,443 --wf-udp-out=443,50000,50100 --lua-desync=fake:ip_ttl=3
+SuperOnline:--wf-tcp-out=80,443 --wf-udp-out=443,50000,50100 --lua-desync=fake:tcp_md5
+SuperOnline Alternatif:--wf-tcp-out=80,443 --wf-udp-out=443,50000-50099 --lua-desync=fake:ip_ttl=3:tcp_md5
+Kablonet:--wf-tcp-out=80,443 --wf-udp-out=443,50000,50100 --lua-desync=fake:ip_ttl=4
+Turkcell Hotspot:--wf-tcp-out=80,443 --wf-udp-out=443,50000,50100 --lua-desync=fake:ip_ttl=1:ip_autottl=-1,3-20
+Vodafone Hotspot:--wf-tcp-out=80,443 --wf-udp-out=443,50000,50100 --lua-desync=multisplit:pos=2

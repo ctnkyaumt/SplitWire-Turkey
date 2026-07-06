@@ -193,6 +193,7 @@
     "confirm_goodbyedpi_service_install": "¿Está seguro de que desea iniciar la instalación del servicio GoodbyeDPI?",
     "confirm_goodbyedpi_service_install_kaspersky": "¿Está seguro de que desea iniciar la instalación del servicio GoodbyeDPI?\n\nKaspersky AV detectado. Este método no funcionará a menos que Kaspersky AV sea completamente eliminado del sistema.",
     "goodbyedpi_service_install_title": "Instalación del Servicio GoodbyeDPI",
+    "goodbyedpi_prompt_auto_selection": "¿Desea utilizar la selección automática de preajustes? Si selecciona 'Sí', la aplicación probará y encontrará automáticamente un preajuste que funcione. Si selecciona 'No', solo se instalará el preajuste seleccionado actualmente sin probar.",
     "windivert_files_missing_install": "La instalación de GoodbyeDPI no puede ser realizada porque faltan archivos críticos de WinDivert. El problema puede estar relacionado con Kaspersky AV. Visite la página de Github para información detallada.",
     "install_error_title": "Error de Instalación",
     "goodbyedpi_service_install_success": "¡Instalación del servicio GoodbyeDPI completada exitosamente!",

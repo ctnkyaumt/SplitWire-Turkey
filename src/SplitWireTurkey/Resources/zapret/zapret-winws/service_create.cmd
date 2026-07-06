@@ -25,6 +25,6 @@ goto :eof
 :srvinst
 net stop %1
 sc delete %1
-sc create %1 binPath= "\"%~dp0winws.exe\" %ARGS%" DisplayName= "zapret DPI bypass : %1" start= auto
+sc create %1 binPath= "\"%~dp0winws2.exe\" %ARGS%" DisplayName= "zapret DPI bypass : %1" start= auto
 sc description %1 "zapret DPI bypass software"
 sc start %1

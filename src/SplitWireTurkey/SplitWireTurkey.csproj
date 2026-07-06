@@ -59,6 +59,18 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>res\byedpi\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </Content>
+    <Content Include="Resources\goodbyedpi\**" Condition="Exists('Resources\goodbyedpi')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>res\goodbyedpi\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <Content Include="Resources\zapret\**" Condition="Exists('Resources\zapret')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>res\zapret\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <Content Include="Resources\restart.bat" Condition="Exists('Resources\restart.bat')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>res\restart.bat</Link>
+    </Content>
   </ItemGroup>
 
 </Project> 

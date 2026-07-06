@@ -219,6 +219,7 @@
     "confirm_goodbyedpi_service_install": "Are you sure you want to start GoodbyeDPI service installation?",
     "confirm_goodbyedpi_service_install_kaspersky": "Are you sure you want to start GoodbyeDPI service installation?\n\nKaspersky AV detected. This method will not work unless Kaspersky AV is completely removed from the system.",
     "goodbyedpi_service_install_title": "GoodbyeDPI Service Installation",
+    "goodbyedpi_prompt_auto_selection": "Do you want to use auto preset selection? If you select 'Yes', the app will automatically test and find a working preset. If you select 'No', only the currently selected preset will be installed without testing.",
     "windivert_files_missing_install": "GoodbyeDPI installation cannot be performed because critical WinDivert files are missing. The issue may be related to Kaspersky AV. Visit the Github page for detailed information.",
     "install_error_title": "Installation Error",
     "goodbyedpi_service_install_success": "GoodbyeDPI service installation completed successfully!",

@@ -219,6 +219,7 @@
     "confirm_goodbyedpi_service_install": "GoodbyeDPI hizmet kurulumu başlatmak istediğinizden emin misiniz?",
     "confirm_goodbyedpi_service_install_kaspersky": "GoodbyeDPI hizmet kurulumu başlatmak istediğinizden emin misiniz?\n\nKaspersky AV tespit edildi. Bu yöntem, Kaspersky AV sistemden tamamen kaldırılmadığı sürece çalışmayacaktır.",
     "goodbyedpi_service_install_title": "GoodbyeDPI Hizmet Kurulumu",
+    "goodbyedpi_prompt_auto_selection": "Otomatik preset seçimini kullanmak istiyor musunuz? 'Evet'i seçerseniz, uygulama otomatik olarak çalışan bir preset bulup test edecektir. 'Hayır'ı seçerseniz, test edilmeden sadece şu an seçili olan preset kurulacaktır.",
     "windivert_files_missing_install": "Kritik WinDivert dosyaları eksik olduğu için GoodbyeDPI kurulumu yapılamıyor. Sorun Kaspersky AV ile ilgili olabilir. Detaylı bilgi için Github sayfasını ziyaret edin.",
     "install_error_title": "Kurulum Hatası",
     "goodbyedpi_service_install_success": "GoodbyeDPI hizmet kurulumu başarıyla tamamlandı!",

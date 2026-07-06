@@ -421,6 +421,46 @@
                                Width="16" Height="16" 
                                Stretch="Uniform"/>
                     </Button>
+
+                    <!-- Language Flag Menu - Inline horizontal flow to prevent overlapping -->
+                    <StackPanel x:Name="languageMenu" 
+                                Visibility="Collapsed"
+                                Orientation="Horizontal"
+                                Margin="10,0,0,0"
+                                VerticalAlignment="Center">
+                        
+                        <!-- Turkish -->
+                        <Button x:Name="btnLanguageTR" Style="{StaticResource InfoButtonStyle}" Margin="2,0" Click="BtnLanguageTR_Click" Tag="TR" ToolTipService.InitialShowDelay="0" ToolTipService.ShowDuration="5000">
+                            <TextBlock Text="TR" FontFamily="Poppins Bold" FontSize="10" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            <Button.ToolTip>
+                                <ToolTip Content="Türkçe" FontFamily="Poppins Regular" FontSize="12"/>
+                            </Button.ToolTip>
+                        </Button>
+                        
+                        <!-- English -->
+                        <Button x:Name="btnLanguageEN" Style="{StaticResource InfoButtonStyle}" Margin="2,0" Click="BtnLanguageEN_Click" Tag="EN" ToolTipService.InitialShowDelay="0" ToolTipService.ShowDuration="5000">
+                            <TextBlock Text="EN" FontFamily="Poppins Bold" FontSize="10" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            <Button.ToolTip>
+                                <ToolTip Content="English" FontFamily="Poppins Regular" FontSize="12"/>
+                            </Button.ToolTip>
+                        </Button>
+                        
+                        <!-- Russian -->
+                        <Button x:Name="btnLanguageRU" Style="{StaticResource InfoButtonStyle}" Margin="2,0" Click="BtnLanguageRU_Click" Tag="RU" ToolTipService.InitialShowDelay="0" ToolTipService.ShowDuration="5000">
+                            <TextBlock Text="RU" FontFamily="Poppins Bold" FontSize="10" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            <Button.ToolTip>
+                                <ToolTip Content="Русский" FontFamily="Poppins Regular" FontSize="12"/>
+                            </Button.ToolTip>
+                        </Button>
+                        
+                        <!-- Spanish -->
+                        <Button x:Name="btnLanguageES" Style="{StaticResource InfoButtonStyle}" Margin="2,0" Click="BtnLanguageES_Click" Tag="ES" ToolTipService.InitialShowDelay="0" ToolTipService.ShowDuration="5000">
+                            <TextBlock Text="ES" FontFamily="Poppins Bold" FontSize="10" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            <Button.ToolTip>
+                                <ToolTip Content="Español" FontFamily="Poppins Regular" FontSize="12"/>
+                            </Button.ToolTip>
+                        </Button>
+                    </StackPanel>
                 </StackPanel>
                 
 
@@ -436,89 +476,6 @@
                      Margin="0,16,24,0"
                      Panel.ZIndex="999"
                      Click="BtnThemeToggle_Click"/>
-
-        <!-- Language Flag Menu - Absolute Positioned Overlay -->
-        <StackPanel x:Name="languageMenu" 
-                    Grid.Row="0"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Top"
-                    Margin="340,148,0,0"
-                    Panel.ZIndex="998"
-                    Visibility="Collapsed"
-                    Orientation="Horizontal">
-            
-            <!-- Turkish Flag -->
-            <Button x:Name="btnLanguageTR" 
-                    Style="{StaticResource InfoButtonStyle}"
-                    Margin="2,0"
-                    Click="BtnLanguageTR_Click"
-                    Tag="TR"
-                    ToolTipService.InitialShowDelay="0"
-                    ToolTipService.ShowDuration="5000">
-                <Image Source="pack://application:,,,/Resources/Flags/tr_flag.png" 
-                       Width="24" Height="24" 
-                       Stretch="Uniform"/>
-                <Button.ToolTip>
-                    <ToolTip Content="Türkçe" 
-                             FontFamily="Poppins Regular"
-                             FontSize="12"/>
-                </Button.ToolTip>
-            </Button>
-            
-            <!-- English Flag -->
-            <Button x:Name="btnLanguageEN" 
-                    Style="{StaticResource InfoButtonStyle}"
-                    Margin="2,0"
-                    Click="BtnLanguageEN_Click"
-                    Tag="EN"
-                    ToolTipService.InitialShowDelay="0"
-                    ToolTipService.ShowDuration="5000">
-                <Image Source="pack://application:,,,/Resources/Flags/gb_flag.png" 
-                       Width="24" Height="24" 
-                       Stretch="Uniform"/>
-                <Button.ToolTip>
-                    <ToolTip Content="English" 
-                             FontFamily="Poppins Regular"
-                             FontSize="12"/>
-                </Button.ToolTip>
-            </Button>
-            
-            <!-- Russian Flag -->
-            <Button x:Name="btnLanguageRU" 
-                    Style="{StaticResource InfoButtonStyle}"
-                    Margin="2,0"
-                    Click="BtnLanguageRU_Click"
-                    Tag="RU"
-                    ToolTipService.InitialShowDelay="0"
-                    ToolTipService.ShowDuration="5000">
-                <Image Source="pack://application:,,,/Resources/Flags/ru_flag.png" 
-                       Width="24" Height="24" 
-                       Stretch="Uniform"/>
-                <Button.ToolTip>
-                    <ToolTip Content="Русский" 
-                             FontFamily="Poppins Regular"
-                             FontSize="12"/>
-                </Button.ToolTip>
-            </Button>
-            
-            <!-- Spanish Flag -->
-            <Button x:Name="btnLanguageES" 
-                    Style="{StaticResource InfoButtonStyle}"
-                    Margin="2,0"
-                    Click="BtnLanguageES_Click"
-                    Tag="ES"
-                    ToolTipService.InitialShowDelay="0"
-                    ToolTipService.ShowDuration="5000">
-                <Image Source="pack://application:,,,/Resources/Flags/es_flag.png" 
-                       Width="24" Height="24" 
-                       Stretch="Uniform"/>
-                <Button.ToolTip>
-                    <ToolTip Content="Español" 
-                             FontFamily="Poppins Regular"
-                             FontSize="12"/>
-                </Button.ToolTip>
-            </Button>
-        </StackPanel>
 
         <!-- Main Content -->
         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,16">
@@ -871,50 +828,75 @@
                                  HorizontalAlignment="Center"
                                  Visibility="Collapsed"/>
 
-                        <!-- Blacklisti Düzenle Toggle -->
-                        <StackPanel Orientation="Horizontal"
-                                    HorizontalAlignment="Center"
-                                    Margin="0,0,0,10"
+                        <!-- Blacklist kullan - Ortalanmış -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10" HorizontalAlignment="Center"
                                     ToolTipService.InitialShowDelay="1000"
                                     ToolTipService.ShowDuration="5000">
                             <StackPanel.ToolTip>
-                                <ToolTip x:Name="tooltipByeDPIEditBlacklist" 
+                                <ToolTip x:Name="tooltipByeDPIUseBlacklist" 
                                          FontFamily="Poppins Regular"
                                          FontSize="12"
                                          Placement="Mouse"/>
                             </StackPanel.ToolTip>
-                            <ToggleButton x:Name="chkByeDPIEditBlacklist" 
+                            <ToggleButton x:Name="chkByeDPIUseBlacklist" 
                                          Style="{StaticResource ModernToggleSwitchStyle}"
-                                         Checked="ChkByeDPIEditBlacklist_Checked"
-                                         Unchecked="ChkByeDPIEditBlacklist_Unchecked"/>
-                            <TextBlock x:Name="txtEditBlacklistByeDPI" Text="Blacklisti düzenle" 
+                                         Checked="ChkByeDPIUseBlacklist_Checked"
+                                         Unchecked="ChkByeDPIUseBlacklist_Unchecked"/>
+                            <TextBlock x:Name="txtUseBlacklistByeDPI" Text="Blacklist kullan" 
                                        FontFamily="{StaticResource Montserrat}"
                                        VerticalAlignment="Center"
                                        Margin="10,0,0,0"/>
                         </StackPanel>
 
-                        <!-- Blacklist Domainleri TextBox -->
-                        <TextBox x:Name="txtByeDPIBlacklist" 
-                                 Height="80"
-                                 Width="550"
-                                 MaxWidth="550"
-                                 TextWrapping="Wrap"
-                                 AcceptsReturn="True"
-                                 VerticalScrollBarVisibility="Auto"
-                                 Margin="0,0,0,10"
-                                 HorizontalAlignment="Center"
-                                 Visibility="Collapsed"/>
+                        <!-- Blacklisti düzenle panel (sadece blacklist kullan seçildiğinde görünür) -->
+                        <StackPanel x:Name="editBlacklistPanelByeDPI" 
+                                    Orientation="Vertical"
+                                    Visibility="Collapsed">
+                            <!-- Blacklisti Düzenle Toggle -->
+                            <StackPanel Orientation="Horizontal"
+                                        HorizontalAlignment="Center"
+                                        Margin="0,0,0,10"
+                                        ToolTipService.InitialShowDelay="1000"
+                                        ToolTipService.ShowDuration="5000">
+                                <StackPanel.ToolTip>
+                                    <ToolTip x:Name="tooltipByeDPIEditBlacklist" 
+                                             FontFamily="Poppins Regular"
+                                             FontSize="12"
+                                             Placement="Mouse"/>
+                                </StackPanel.ToolTip>
+                                <ToggleButton x:Name="chkByeDPIEditBlacklist" 
+                                              Style="{StaticResource ModernToggleSwitchStyle}"
+                                              Checked="ChkByeDPIEditBlacklist_Checked"
+                                              Unchecked="ChkByeDPIEditBlacklist_Unchecked"/>
+                                <TextBlock x:Name="txtEditBlacklistByeDPI" Text="Blacklisti düzenle" 
+                                           FontFamily="{StaticResource Montserrat}"
+                                           VerticalAlignment="Center"
+                                           Margin="10,0,0,0"/>
+                            </StackPanel>
 
-                        <!-- Kaydet Butonu -->
-                        <Button x:Name="btnByeDPISaveBlacklist" 
-                                Content="Kaydet" 
-                                Style="{StaticResource MaterialDesignOutlinedButton}"
-                                Width="100"
-                                HorizontalAlignment="Center"
-                                Margin="0,0,0,10"
-                                FontFamily="{StaticResource PoppinsRegular}"
-                                Click="BtnByeDPISaveBlacklist_Click"
-                                Visibility="Collapsed"/>
+                            <!-- Blacklist Domainleri TextBox -->
+                            <TextBox x:Name="txtByeDPIBlacklist" 
+                                     Height="80"
+                                     Width="550"
+                                     MaxWidth="550"
+                                     TextWrapping="Wrap"
+                                     AcceptsReturn="True"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Margin="0,0,0,10"
+                                     HorizontalAlignment="Center"
+                                     Visibility="Collapsed"/>
+
+                            <!-- Kaydet Butonu -->
+                            <Button x:Name="btnByeDPISaveBlacklist" 
+                                    Content="Kaydet" 
+                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    Width="100"
+                                    HorizontalAlignment="Center"
+                                    Margin="0,0,0,10"
+                                    FontFamily="{StaticResource PoppinsRegular}"
+                                    Click="BtnByeDPISaveBlacklist_Click"
+                                    Visibility="Collapsed"/>
+                        </StackPanel>
 
                         <!-- Spacer for aesthetics -->
                         <Separator Height="1" Background="#e0e0e0" Margin="0,10,0,20" Width="500" HorizontalAlignment="Center"/>
@@ -1081,11 +1063,12 @@
                                        FontFamily="{StaticResource PoppinsRegular}"
                                        Margin="0,0,10,0"/>
                             
-                            <ComboBox x:Name="cmbScanLevel" 
-                                      Width="70"
+                          <ComboBox x:Name="cmbScanLevel" 
+                                      Width="100"
                                       SelectedIndex="0"
                                       FontFamily="{StaticResource PoppinsRegular}"
                                       VerticalAlignment="Center">
+                                <ComboBoxItem Content="Anında (Keift)"/>
                                 <ComboBoxItem Content="Hızlı"/>
                                 <ComboBoxItem Content="Standart"/>
                                 <ComboBoxItem Content="Tam"/>
@@ -1109,7 +1092,7 @@
                                Margin="0,0,0,15"/>
                     
                     <!-- Hazır Ayar ve Düzenle Switch Yan Yana -->
-                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,10" HorizontalAlignment="Left">
+                    <WrapPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,10" HorizontalAlignment="Left">
                         <StackPanel Orientation="Horizontal"
                                     ToolTipService.InitialShowDelay="1000"
                                     ToolTipService.ShowDuration="5000">
@@ -1129,6 +1112,21 @@
                                       Width="155"
                                       FontFamily="{StaticResource PoppinsRegular}"
                                       SelectionChanged="CmbZapretPresets_SelectionChanged"/>
+
+                            <Button x:Name="btnExportPresets" 
+                                    Content="Dışa Aktar" 
+                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    Height="30"
+                                    Margin="10,0,0,0"
+                                    Padding="5,0"
+                                    Click="BtnExportPresets_Click"/>
+                            <Button x:Name="btnImportPresets" 
+                                    Content="İçe Aktar" 
+                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    Height="30"
+                                    Margin="5,0,0,0"
+                                    Padding="5,0"
+                                    Click="BtnImportPresets_Click"/>
                         </StackPanel>
                         
                         <StackPanel Orientation="Horizontal"
@@ -1146,12 +1144,12 @@
                                          Style="{StaticResource ModernToggleSwitchStyle}"
                                          Checked="ChkManualParams_Checked"
                                          Unchecked="ChkManualParams_Unchecked"/>
-                            <TextBlock x:Name="txtEditPresetZapret" Text="Hazır ayarı düzenle" 
-                                       FontFamily="{StaticResource Montserrat}"
+                            <TextBlock x:Name="txtEditPresetZapret" Text="Hazır Ayarı Düzenle" 
+                                       FontFamily="{StaticResource PoppinsRegular}"
                                        VerticalAlignment="Center"
                                        Margin="10,0,0,0"/>
                         </StackPanel>
-                    </StackPanel>
+                    </WrapPanel>
                     
                     <TextBox x:Name="txtZapretParams" 
                              Grid.Row="4" 

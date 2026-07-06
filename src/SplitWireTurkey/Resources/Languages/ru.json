@@ -219,6 +219,7 @@
     "confirm_goodbyedpi_service_install": "Вы уверены, что хотите начать установку службы GoodbyeDPI?",
     "confirm_goodbyedpi_service_install_kaspersky": "Вы уверены, что хотите начать установку службы GoodbyeDPI?\n\nОбнаружен Kaspersky AV. Этот метод не будет работать, пока Kaspersky AV полностью не удален из системы.",
     "goodbyedpi_service_install_title": "Установка службы GoodbyeDPI",
+    "goodbyedpi_prompt_auto_selection": "Хотите использовать автоматический выбор пресета? Если вы выберете «Да», приложение автоматически протестирует и найдет рабочий пресет. Если вы выберете «Нет», будет установлен только выбранный в данный момент пресет без тестирования.",
     "windivert_files_missing_install": "Установка GoodbyeDPI не может быть выполнена, поскольку отсутствуют критические файлы WinDivert. Проблема может быть связана с Kaspersky AV. Посетите страницу Github для получения подробной информации.",
     "install_error_title": "Ошибка установки",
     "goodbyedpi_service_install_success": "Установка службы GoodbyeDPI успешно завершена!",

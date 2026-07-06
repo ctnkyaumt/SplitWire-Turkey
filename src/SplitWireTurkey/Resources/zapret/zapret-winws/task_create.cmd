@@ -5,6 +5,6 @@
 @rem ЕСЛИ НИЧЕГО НЕ ПОНИМАЕТЕ - НЕ ТРОГАЙТЕ ЭТОТ ФАЙЛ, ОТКАЖИТЕСЬ ОТ ИСПОЛЬЗОВАНИЯ СЛУЖБЫ. ИНАЧЕ БУДЕТЕ ПИСАТЬ ПОТОМ ВОПРОСЫ "У МЕНЯ ПРОПАЛ ИНТЕРНЕТ , КАК ВОССТАНОВИТЬ"
 
 set WINWS1=--wf-l3=ipv4,ipv6 --wf-tcp=80,443 --dpi-desync=fake,fakedsplit --dpi-desync-ttl=7 --dpi-desync-fooling=md5sig
-rem schtasks /Create /F /TN winws1 /NP /RU "" /SC onstart /TR "\"%~dp0winws.exe\" %WINWS1%"
+rem schtasks /Create /F /TN winws1 /NP /RU "" /SC onstart /TR "\"%~dp0winws2.exe\" %WINWS1%"
 rem set WINWS2=--wf-l3=ipv4,ipv6 --wf-udp=443 --dpi-desync=fake
-rem schtasks /Create /F /TN winws2 /NP /RU "" /SC onstart /TR "\"%~dp0winws.exe\" %WINWS2%"
+rem schtasks /Create /F /TN winws2 /NP /RU "" /SC onstart /TR "\"%~dp0winws2.exe\" %WINWS2%"

@@ -5,7 +5,7 @@ rem Zapret hizmeti kurulum scripti
 rem Bu script SplitWireTurkey tarafından otomatik olarak oluşturulur
 
 set SERVICE_NAME=zapret
-set EXE_PATH=%~dp0winws.exe
+set EXE_PATH=%~dp0winws2.exe
 set DISPLAY_NAME=Zapret Açıklaması DPI bypassing software
 
 rem Mevcut hizmeti durdur ve sil
