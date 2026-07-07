@@ -10019,23 +10019,29 @@ Get-DnsClientDohServerAddress
                 }
 
                 var lines = logContent.Split('\n');
+                var httpsMatches = new HashSet<string>();
+                var otherMatches = new HashSet<string>();
                 string currentParams = null;
+                bool currentIsHttps = false;
                 foreach (var line in lines)
                 {
                     if (line.StartsWith("- curl_test_") && line.Contains("winws2"))
                     {
                         var winwsIndex = line.IndexOf("winws2");
-                        if (winwsIndex >= 0)
-                        {
-                            currentParams = line.Substring(winwsIndex + "winws2".Length).Trim();
-                        }
+                        currentParams = winwsIndex >= 0 ? line.Substring(winwsIndex + "winws2".Length).Trim() : null;
+                        // curl_test_https_tls12 / curl_test_https_tls13 => HTTPS/SNI test
+                        currentIsHttps = line.Contains("curl_test_https");
                     }
                     else if (line.Contains("!!!!! AVAILABLE !!!!!") && currentParams != null)
                     {
-                        matches.Add(currentParams);
+                        (currentIsHttps ? httpsMatches : otherMatches).Add(currentParams);
                         currentParams = null;
                     }
                 }
+                // Prefer HTTPS-validated strategies (the sites we care about are HTTPS/SNI
+                // blocked; an HTTP-only strategy can look "available" yet not unblock them in a
+                // browser). Fall back to other protocols only if no HTTPS strategy was found.
+                return httpsMatches.Count > 0 ? httpsMatches : otherMatches;
             }
             catch { }
             return matches;
@@ -10060,6 +10066,8 @@ Get-DnsClientDohServerAddress
                 }
 
                 var lines = logContent.Split('\n');
+                var httpsMatches = new HashSet<string>();
+                var otherMatches = new HashSet<string>();
                 bool inCommon = false;
                 foreach (var raw in lines)
                 {
@@ -10085,9 +10093,11 @@ Get-DnsClientDohServerAddress
                     {
                         var strategy = line.Substring(winwsIndex + "winws2".Length).Trim();
                         if (strategy.Contains("--dpi-desync"))
-                            matches.Add(strategy);
+                            (line.Contains("curl_test_https") ? httpsMatches : otherMatches).Add(strategy);
                     }
                 }
+                // Prefer HTTPS-validated universal strategies over plain-HTTP ones.
+                return httpsMatches.Count > 0 ? httpsMatches : otherMatches;
             }
             catch { }
             return matches;
@@ -10112,9 +10122,16 @@ Get-DnsClientDohServerAddress
                     logContent = await sr.ReadToEndAsync();
                 }
 
+                // Collect HTTPS- and other-protocol strategies per domain separately so we can
+                // prefer the HTTPS-validated ones (see ExtractStrategiesFromLogForDomain).
+                var httpsByDomain = new Dictionary<string, HashSet<string>>();
+                var otherByDomain = new Dictionary<string, HashSet<string>>();
+                foreach (var d in domains) { httpsByDomain[d] = new HashSet<string>(); otherByDomain[d] = new HashSet<string>(); }
+
                 var lines = logContent.Split('\n');
                 string currentParams = null;
                 string currentDomain = null;
+                bool currentIsHttps = false;
                 foreach (var raw in lines)
                 {
                     var line = raw.TrimEnd('\r');
@@ -10122,6 +10139,7 @@ Get-DnsClientDohServerAddress
                     {
                         currentParams = null;
                         currentDomain = null;
+                        currentIsHttps = line.Contains("curl_test_https");
 
                         var sepIndex = line.IndexOf(" : ");
                         var winwsIndex = line.IndexOf("winws2");
@@ -10137,10 +10155,13 @@ Get-DnsClientDohServerAddress
                     }
                     else if (line.Contains("!!!!! AVAILABLE !!!!!") && currentParams != null && currentDomain != null)
                     {
-                        result[currentDomain].Add(currentParams);
+                        (currentIsHttps ? httpsByDomain : otherByDomain)[currentDomain].Add(currentParams);
                         currentParams = null;
                     }
                 }
+
+                foreach (var d in domains)
+                    result[d] = httpsByDomain[d].Count > 0 ? httpsByDomain[d] : otherByDomain[d];
             }
             catch { }
             return result;
