@@ -9903,32 +9903,37 @@ Get-DnsClientDohServerAddress
 
                 var allMatches = new List<string>();
 
-                if (scanLevelStr == "keift")
+                if (scanLevelStr != "force")
                 {
-                    // Instant mode: one quick probe against a single domain. Take the first
-                    // working strategy; otherwise apply a known-good universal fallback preset.
-                    await RunBlockcheck("discord.com", "quick", earlyStop: true, keiftKill: true, cutoffStart: 2000);
+                    // Fast single-domain scan (matches the keift/video approach: the reference
+                    // screenshots only test discord.com). Cut the log early to keep the scan
+                    // short, then take a working HTTPS strategy — zapret applies the chosen
+                    // strategy to ALL traffic, so a good strategy for one representative blocked
+                    // HTTPS site generalizes. Multi-domain verification is the "full" level below.
+                    //   keift  => cut early (2000) and give up fast to the universal preset
+                    //   quick  => cut later (6000) and keep probing until a strategy is found
+                    bool keiftMode = scanLevelStr == "keift";
+                    int cut = keiftMode ? 2000 : 6000;
+                    await RunBlockcheck("discord.com", "quick", earlyStop: true, keiftKill: keiftMode, cutoffStart: cut);
                     var strategies = await ExtractStrategiesFromLogForDomain(blockcheckLogPath, "discord.com");
                     if (strategies.Any())
                     {
-                        File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Keift: {strategies.Count} strateji bulundu.\n");
+                        File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Hızlı tarama: {strategies.Count} strateji bulundu.\n");
                         allMatches.AddRange(strategies);
                     }
                     else
                     {
-                        File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Keift: strateji bulunamadı. Evrensel fallback preset uygulanıyor...\n");
+                        File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Hızlı tarama: strateji bulunamadı. Evrensel fallback preset uygulanıyor...\n");
                         allMatches.Add("--dpi-desync=fakeddisorder --dpi-desync-ttl=1 --dpi-desync-autottl=-5 --dpi-desync-split-pos=1");
                     }
                 }
                 else
                 {
-                    // Single blockcheck run over ALL domains (previously 3 separate full scans).
-                    // Prefer blockcheck's native "* COMMON" intersection; if it is empty (a quick
-                    // scan skips strategies, so its COMMON can be incomplete) fall back to a
-                    // C#-side per-domain intersection parsed from the same combined log.
+                    // "Full" (force): single blockcheck run over ALL domains, run to completion
+                    // so blockcheck's native "* COMMON" intersection is emitted. If it is empty,
+                    // fall back to a C#-side per-domain intersection parsed from the same log.
                     var domainList = new[] { "pastebin.com", "discord.com", "roblox.com" };
-                    int cutoffStart = scanLevelStr == "force" ? 12000 : 6000;
-                    await RunBlockcheck(string.Join(" ", domainList), scanLevelStr, earlyStop: false, keiftKill: false, cutoffStart: cutoffStart);
+                    await RunBlockcheck(string.Join(" ", domainList), scanLevelStr, earlyStop: false, keiftKill: false, cutoffStart: 12000);
 
                     var commonStrategies = await ExtractCommonStrategiesFromLog(blockcheckLogPath);
                     if (commonStrategies.Any())
