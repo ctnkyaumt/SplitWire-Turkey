@@ -6540,7 +6540,7 @@ foreach ($adapter in $adapters) {
     
     # IPv4 DNS ayarları
     try {
-        Set-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -ServerAddresses '8.8.8.8', '9.9.9.9' -ErrorAction Stop
+        Set-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -ServerAddresses '1.1.1.1', '1.0.0.1' -ErrorAction Stop
         Write-Host ""IPv4 DNS ayarları başarılı: $adapterName""
     }
     catch {
@@ -6549,7 +6549,7 @@ foreach ($adapter in $adapters) {
     
     # IPv6 DNS ayarları
     try {
-        Set-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv6 -ServerAddresses '2001:4860:4860::8888', '2620:fe::9' -ErrorAction Stop
+        Set-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv6 -ServerAddresses '2606:4700:4700::1111', '2606:4700:4700::1001' -ErrorAction Stop
         Write-Host ""IPv6 DNS ayarları başarılı: $adapterName""
     }
     catch {
@@ -6565,29 +6565,29 @@ foreach ($adapter in $adapters) {
             Remove-Item -Path $dohPath -Recurse -Force -ErrorAction SilentlyContinue
         }
         
-        # Google DNS (8.8.8.8) için DoH ayarı
-        $googlePath = $dohPath + '\Doh\8.8.8.8'
+        # Cloudflare DNS (birincil) (1.1.1.1) için DoH ayarı
+        $googlePath = $dohPath + '\Doh\1.1.1.1'
         New-Item -Path $googlePath -Force | Out-Null
         New-ItemProperty -Path $googlePath -Name 'DohFlags' -Value 1 -PropertyType Qword | Out-Null
-        New-ItemProperty -Path $googlePath -Name 'DohTemplate' -Value 'https://dns.google/dns-query' -PropertyType String | Out-Null
+        New-ItemProperty -Path $googlePath -Name 'DohTemplate' -Value 'https://cloudflare-dns.com/dns-query' -PropertyType String | Out-Null
         
-        # Quad9 DNS (9.9.9.9) için DoH ayarı
-        $quad9Path = $dohPath + '\Doh\9.9.9.9'
+        # Cloudflare DNS (ikincil) (1.0.0.1) için DoH ayarı
+        $quad9Path = $dohPath + '\Doh\1.0.0.1'
         New-Item -Path $quad9Path -Force | Out-Null
         New-ItemProperty -Path $quad9Path -Name 'DohFlags' -Value 1 -PropertyType Qword | Out-Null
-        New-ItemProperty -Path $quad9Path -Name 'DohTemplate' -Value 'https://dns.quad9.net/dns-query' -PropertyType String | Out-Null
+        New-ItemProperty -Path $quad9Path -Name 'DohTemplate' -Value 'https://cloudflare-dns.com/dns-query' -PropertyType String | Out-Null
         
-        # Google DNS IPv6 (2001:4860:4860::8888) için DoH ayarı
-        $googleIPv6Path = $dohPath + '\Doh6\2001:4860:4860::8888'
+        # Cloudflare DNS IPv6 (birincil) (2606:4700:4700::1111) için DoH ayarı
+        $googleIPv6Path = $dohPath + '\Doh6\2606:4700:4700::1111'
         New-Item -Path $googleIPv6Path -Force | Out-Null
         New-ItemProperty -Path $googleIPv6Path -Name 'DohFlags' -Value 1 -PropertyType Qword | Out-Null
-        New-ItemProperty -Path $googleIPv6Path -Name 'DohTemplate' -Value 'https://dns.google/dns-query' -PropertyType String | Out-Null
+        New-ItemProperty -Path $googleIPv6Path -Name 'DohTemplate' -Value 'https://cloudflare-dns.com/dns-query' -PropertyType String | Out-Null
         
-        # Quad9 DNS IPv6 (2620:fe::9) için DoH ayarı
-        $quad9IPv6Path = $dohPath + '\Doh6\2620:fe::9'
+        # Cloudflare DNS IPv6 (ikincil) (2606:4700:4700::1001) için DoH ayarı
+        $quad9IPv6Path = $dohPath + '\Doh6\2606:4700:4700::1001'
         New-Item -Path $quad9IPv6Path -Force | Out-Null
         New-ItemProperty -Path $quad9IPv6Path -Name 'DohFlags' -Value 1 -PropertyType Qword | Out-Null
-        New-ItemProperty -Path $quad9IPv6Path -Name 'DohTemplate' -Value 'https://dns.quad9.net/dns-query' -PropertyType String | Out-Null
+        New-ItemProperty -Path $quad9IPv6Path -Name 'DohTemplate' -Value 'https://cloudflare-dns.com/dns-query' -PropertyType String | Out-Null
         
         Write-Host ""DoH ayarları başarılı: $adapterName""
     }
@@ -7882,18 +7882,18 @@ $dohResults | ConvertTo-Json
                         File.AppendAllText(logPath, $"3. {interfaceName} adaptörü için DNS ayarları yapılıyor...\n");
 
                         // IPv4 DNS ayarları
-                        var ipv4Result = ExecuteCommand("netsh", $"interface ip set dns \"{interfaceName}\" static 8.8.8.8");
-                        File.AppendAllText(logPath, $"IPv4 birincil DNS (8.8.8.8) ayarlandı: {ipv4Result}\n");
+                        var ipv4Result = ExecuteCommand("netsh", $"interface ip set dns \"{interfaceName}\" static 1.1.1.1");
+                        File.AppendAllText(logPath, $"IPv4 birincil DNS (1.1.1.1) ayarlandı: {ipv4Result}\n");
 
-                        var ipv4SecondaryResult = ExecuteCommand("netsh", $"interface ip add dns \"{interfaceName}\" 9.9.9.9 index=2");
-                        File.AppendAllText(logPath, $"IPv4 ikincil DNS (9.9.9.9) ayarlandı: {ipv4SecondaryResult}\n");
+                        var ipv4SecondaryResult = ExecuteCommand("netsh", $"interface ip add dns \"{interfaceName}\" 1.0.0.1 index=2");
+                        File.AppendAllText(logPath, $"IPv4 ikincil DNS (1.0.0.1) ayarlandı: {ipv4SecondaryResult}\n");
 
                         // IPv6 DNS ayarları
-                        var ipv6Result = ExecuteCommand("netsh", $"interface ipv6 set dns \"{interfaceName}\" static 2001:4860:4860::8888");
-                        File.AppendAllText(logPath, $"IPv6 birincil DNS (2001:4860:4860::8888) ayarlandı: {ipv6Result}\n");
+                        var ipv6Result = ExecuteCommand("netsh", $"interface ipv6 set dns \"{interfaceName}\" static 2606:4700:4700::1111");
+                        File.AppendAllText(logPath, $"IPv6 birincil DNS (2606:4700:4700::1111) ayarlandı: {ipv6Result}\n");
 
-                        var ipv6SecondaryResult = ExecuteCommand("netsh", $"interface ipv6 add dns \"{interfaceName}\" 2620:fe::9 index=2");
-                        File.AppendAllText(logPath, $"IPv6 ikincil DNS (2620:fe::9) ayarlandı: {ipv6SecondaryResult}\n");
+                        var ipv6SecondaryResult = ExecuteCommand("netsh", $"interface ipv6 add dns \"{interfaceName}\" 2606:4700:4700::1001 index=2");
+                        File.AppendAllText(logPath, $"IPv6 ikincil DNS (2606:4700:4700::1001) ayarlandı: {ipv6SecondaryResult}\n");
 
                         // DNS önbelleğini temizle
                         var flushResult = ExecuteCommand("ipconfig", "/flushdns");
@@ -7920,14 +7920,14 @@ $dohResults | ConvertTo-Json
                             // PowerShell script ile DoH ayarları
                             var psDohScript = @"
 # DoH'u etkinleştir
-Set-DnsClientDohServerAddress -ServerAddress '8.8.8.8' -DohTemplate 'https://dns.google/dns-query' -AllowFallbackToUdp $true
-Set-DnsClientDohServerAddress -ServerAddress '9.9.9.9' -DohTemplate 'https://dns.quad9.net/dns-query' -AllowFallbackToUdp $true
-Set-DnsClientDohServerAddress -ServerAddress '2001:4860:4860::8888' -DohTemplate 'https://dns.google/dns-query' -AllowFallbackToUdp $true
-Set-DnsClientDohServerAddress -ServerAddress '2620:fe::9' -DohTemplate 'https://dns.quad9.net/dns-query' -AllowFallbackToUdp $true
+Set-DnsClientDohServerAddress -ServerAddress '1.1.1.1' -DohTemplate 'https://cloudflare-dns.com/dns-query' -AllowFallbackToUdp $true
+Set-DnsClientDohServerAddress -ServerAddress '1.0.0.1' -DohTemplate 'https://cloudflare-dns.com/dns-query' -AllowFallbackToUdp $true
+Set-DnsClientDohServerAddress -ServerAddress '2606:4700:4700::1111' -DohTemplate 'https://cloudflare-dns.com/dns-query' -AllowFallbackToUdp $true
+Set-DnsClientDohServerAddress -ServerAddress '2606:4700:4700::1001' -DohTemplate 'https://cloudflare-dns.com/dns-query' -AllowFallbackToUdp $true
 
 # DoH'u global olarak etkinleştir
-Set-DnsClientDohServerAddress -ServerAddress '8.8.8.8' -DohTemplate 'https://dns.google/dns-query' -AllowFallbackToUdp $true -AutoUpgrade $true
-Set-DnsClientDohServerAddress -ServerAddress '9.9.9.9' -DohTemplate 'https://dns.quad9.net/dns-query' -AllowFallbackToUdp $true -AutoUpgrade $true
+Set-DnsClientDohServerAddress -ServerAddress '1.1.1.1' -DohTemplate 'https://cloudflare-dns.com/dns-query' -AllowFallbackToUdp $true -AutoUpgrade $true
+Set-DnsClientDohServerAddress -ServerAddress '1.0.0.1' -DohTemplate 'https://cloudflare-dns.com/dns-query' -AllowFallbackToUdp $true -AutoUpgrade $true
 ";
 
                             var psDohResult = ExecutePowerShellScript(psDohScript);
@@ -7951,17 +7951,17 @@ Set-DnsClientDohServerAddress -ServerAddress '9.9.9.9' -DohTemplate 'https://dns
 # Mevcut DoH ayarlarını temizle
 Get-DnsClientDohServerAddress | Remove-DnsClientDohServerAddress -Force
 
-# Google DNS için DoH şablonu
-Set-DnsClientDohServerAddress -ServerAddress '8.8.8.8' -DohTemplate 'https://dns.google/dns-query' -AllowFallbackToUdp $true
+# Cloudflare DNS (birincil) için DoH şablonu
+Set-DnsClientDohServerAddress -ServerAddress '1.1.1.1' -DohTemplate 'https://cloudflare-dns.com/dns-query' -AllowFallbackToUdp $true
 
-# Quad9 DNS için DoH şablonu
-Set-DnsClientDohServerAddress -ServerAddress '9.9.9.9' -DohTemplate 'https://dns.quad9.net/dns-query' -AllowFallbackToUdp $true
+# Cloudflare DNS (ikincil) için DoH şablonu
+Set-DnsClientDohServerAddress -ServerAddress '1.0.0.1' -DohTemplate 'https://cloudflare-dns.com/dns-query' -AllowFallbackToUdp $true
 
-# Google DNS IPv6 için DoH şablonu
-Set-DnsClientDohServerAddress -ServerAddress '2001:4860:4860::8888' -DohTemplate 'https://dns.google/dns-query' -AllowFallbackToUdp $true
+# Cloudflare DNS IPv6 (birincil) için DoH şablonu
+Set-DnsClientDohServerAddress -ServerAddress '2606:4700:4700::1111' -DohTemplate 'https://cloudflare-dns.com/dns-query' -AllowFallbackToUdp $true
 
-# Quad9 DNS IPv6 için DoH şablonu
-Set-DnsClientDohServerAddress -ServerAddress '2620:fe::9' -DohTemplate 'https://dns.quad9.net/dns-query' -AllowFallbackToUdp $true
+# Cloudflare DNS IPv6 (ikincil) için DoH şablonu
+Set-DnsClientDohServerAddress -ServerAddress '2606:4700:4700::1001' -DohTemplate 'https://cloudflare-dns.com/dns-query' -AllowFallbackToUdp $true
 
 # DoH ayarlarını doğrula
 Get-DnsClientDohServerAddress
