@@ -350,7 +350,7 @@ Gereksinimler:
 ## Telif Hakkı
 
 ```
-Copyright © 2025 Çağrı Taşkın
+Copyright © 2026 ctnkyaumt (originally from Çağrı Taşkın)
 
 Bu proje MIT lisansı altında lisanslanmıştır.
 Detaylar için LICENSE dosyasına bakın.
