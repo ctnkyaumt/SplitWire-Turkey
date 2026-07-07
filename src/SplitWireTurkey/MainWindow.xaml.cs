@@ -271,21 +271,20 @@ namespace SplitWireTurkey
         private readonly List<string> _folders;
         
         // Sekme boyut yönetimi için değişkenler
-        private double _mainPageBaseHeight = 610;
-        private double _mainPageAdvancedSettingsHeight = 875;
         private double _byeDPIBaseHeight = 645;
         private double _byeDPIManualParamsHeight = 80;
         private double _byeDPIUseBlacklistHeight = 55;
         private double _discordHeight = 800;
-        private double _goodbyeDPIBaseHeight = 550;
+        // GoodbyeDPI base height must be >= Window MinHeight (640); 550 was being clamped by
+        // the window's hard floor, leaving dead space at the bottom of the tab.
+        private double _goodbyeDPIBaseHeight = 640;
         private double _goodbyeDPIManualParamsHeight = 80;
         private double _goodbyeDPIUseBlacklistHeight = 55;
         private double _goodbyeDPIEditBlacklistHeight = 120;
-        private double _advancedHeight = 830;
-        
-        // Switch durumları
-        private bool _mainPageAdvancedSettingsActive = false;
-        
+        // Reduced from 830: removed the WireSock/Zapret service-status rows, added a small
+        // Exit-button row. Estimate — nudge if there is still a visible gap.
+        private double _advancedHeight = 800;
+
         // Kaspersky overlay için klasör yolları
         public string CurrentProgramDirectory { get; private set; }
         public string LocalAppDataSplitWirePath { get; private set; }
@@ -1827,35 +1826,28 @@ namespace SplitWireTurkey
         {
             try
             {
-                // Ana Sayfa sekmesi
-                var mainTab = TabControl.Items[0] as TabItem;
-                if (mainTab != null)
-                {
-                    mainTab.Header = LanguageManager.GetText("tabs", "main");
-                }
-
                 // ByeDPI sekmesi
-                var byedpiTab = TabControl.Items[1] as TabItem;
+                var byedpiTab = TabControl.Items[0] as TabItem;
                 if (byedpiTab != null)
                 {
                     byedpiTab.Header = LanguageManager.GetText("tabs", "byedpi");
                 }
                 // GoodbyeDPI sekmesi
-                var goodbyedpiTab = TabControl.Items[2] as TabItem;
+                var goodbyedpiTab = TabControl.Items[1] as TabItem;
                 if (goodbyedpiTab != null)
                 {
                     goodbyedpiTab.Header = LanguageManager.GetText("tabs", "goodbyedpi");
                 }
 
                 // Onarım sekmesi
-                var repairTab = TabControl.Items[3] as TabItem;
+                var repairTab = TabControl.Items[2] as TabItem;
                 if (repairTab != null)
                 {
                     repairTab.Header = LanguageManager.GetText("tabs", "repair");
                 }
 
                 // Gelişmiş sekmesi
-                var advancedTab = TabControl.Items[4] as TabItem;
+                var advancedTab = TabControl.Items[3] as TabItem;
                 if (advancedTab != null)
                 {
                     advancedTab.Header = LanguageManager.GetText("tabs", "advanced");
@@ -3684,7 +3676,7 @@ namespace SplitWireTurkey
                 CloseLanguageMenu();
             }
             
-            if (TabControl.SelectedIndex == 1) // ByeDPI sekmesi
+            if (TabControl.SelectedIndex == 0) // ByeDPI sekmesi
             {
                 // ByeDPI sekmesi için pencere boyutunu ayarla
                 // Önceki animasyonları durdur ve doğrudan boyut ayarla
@@ -3702,7 +3694,7 @@ namespace SplitWireTurkey
                 // ByeDPI UI durumunu güncelle
                 UpdateByeDPIUIState();
             }
-            else if (TabControl.SelectedIndex == 3) // Onarım sekmesi
+            else if (TabControl.SelectedIndex == 2) // Onarım sekmesi
             {
                 // Onarım sekmesi için pencere boyutunu ayarla
                 // Önceki animasyonları durdur ve doğrudan boyut ayarla
@@ -3717,7 +3709,7 @@ namespace SplitWireTurkey
                 // Discord durumunu kontrol et
                 CheckDiscordStatus();
             }
-            else if (TabControl.SelectedIndex == 2) // GoodbyeDPI sekmesi
+            else if (TabControl.SelectedIndex == 1) // GoodbyeDPI sekmesi
             {
                 // GoodbyeDPI sekmesi açıldığında dosyaları kontrol et ve gerekirse kopyala
                 CheckAndCopyGoodbyeDPIFilesIfNeeded();
@@ -3735,7 +3727,7 @@ namespace SplitWireTurkey
                 // Cache'den hızlı kontrol yap
                 CheckGoodbyeDPIRemoveButtonVisibilityFromCache();
             }
-            else if (TabControl.SelectedIndex == 4) // Gelişmiş sekmesi
+            else if (TabControl.SelectedIndex == 3) // Gelişmiş sekmesi
             {
                 // Gelişmiş sekmesi için pencere boyutunu ayarla (yeni butonlar için artırıldı)
                 // Önceki animasyonları durdur ve doğrudan boyut ayarla
@@ -3757,18 +3749,7 @@ namespace SplitWireTurkey
                     _ = Task.Run(async () => await CheckAllServicesAsync());
                 }
             }
-            else // Ana Sayfa sekmesi
-            {
-                // Ana Sayfa sekmesi için pencere boyutunu ayarla
-                // Önceki animasyonları durdur ve doğrudan boyut ayarla
-                this.BeginAnimation(HeightProperty, null);
-                
-                // Merkezi boyut hesaplama ve güncelleme
-                UpdateMainPageWindowSize();
-                
-                this.Width = 600;
-            }
-            
+
             // Overlay görünürlüğünü sekmeye göre güncelle
             UpdateOverlayVisibilityForCurrentTab();
         }
@@ -6535,252 +6516,6 @@ Get-DnsClientDohServerAddress
         }
 
         // Yardım Butonları Event Handler'ları
-        private void BtnHelpMainPage_Click(object sender, RoutedEventArgs e)
-        {
-            // Mevcut tema durumunu kontrol et
-            bool isDarkMode = btnThemeToggle.IsChecked == true;
-            
-            var infoWindow = new Window
-            {
-                Title = "Ana Sayfa Yardımı - SplitWire-Turkey",
-                Width = 500,
-                Height = 400,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Owner = this,
-                ResizeMode = ResizeMode.NoResize,
-                Background = isDarkMode ? 
-                    new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#1c1c1d")) :
-                    System.Windows.Media.Brushes.White
-            };
-
-            // Görev çubuğu rengini ayarla - pencere yüklendikten sonra
-            if (isDarkMode && _isTaskbarDarkModeSupported)
-            {
-                infoWindow.Loaded += (s, args) =>
-                {
-                    try
-                    {
-                        var hwnd = new System.Windows.Interop.WindowInteropHelper(infoWindow).Handle;
-                        if (hwnd != IntPtr.Zero)
-                        {
-                            int value = 1;
-                            int result = DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref value, sizeof(int));
-                            if (result != 0)
-                            {
-                                result = DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, ref value, sizeof(int));
-                            }
-                            Debug.WriteLine($"Yardım penceresi görev çubuğu karanlık mod ayarlandı: {result == 0}");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"Yardım penceresi görev çubuğu karanlık mod ayarlanırken hata: {ex.Message}");
-                    }
-                };
-            }
-
-            var mainGrid = new Grid();
-            mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-            var scrollViewer = new ScrollViewer
-            {
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                Margin = new Thickness(20)
-            };
-
-            var contentStack = new StackPanel();
-            
-            var titleText = new TextBlock
-            {
-                Text = LanguageManager.GetText("main_help", "title"),
-                FontSize = 16,
-                FontWeight = FontWeights.Bold,
-                FontFamily = new System.Windows.Media.FontFamily("pack://application:,,,/Resources/#Poppins Bold"),
-                TextAlignment = TextAlignment.Center,
-                Margin = new Thickness(0, 0, 0, 20),
-                Foreground = isDarkMode ? System.Windows.Media.Brushes.White : System.Windows.Media.Brushes.Black
-            };
-            contentStack.Children.Add(titleText);
-
-            // RichTextBox kullanarak formatlı metin oluştur
-            var helpText = new System.Windows.Controls.RichTextBox
-            {
-                FontSize = 12,
-                FontFamily = new System.Windows.Media.FontFamily("pack://application:,,,/Resources/#Poppins Regular"),
-                VerticalAlignment = VerticalAlignment.Top,
-                Background = System.Windows.Media.Brushes.Transparent,
-                BorderThickness = new Thickness(0),
-                IsReadOnly = true,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto
-            };
-
-            // Metin içeriğini oluştur
-            var paragraph = new Paragraph();
-            
-            // Not 1 - Başlığın hemen altına taşındı
-            var note1 = new Run(LanguageManager.GetText("main_help", "note1"))
-            {
-                FontWeight = FontWeights.Bold
-            };
-            var note1Text = new Run(LanguageManager.GetText("main_help", "note1_text"));
-            paragraph.Inlines.Add(note1);
-            paragraph.Inlines.Add(note1Text);
-            paragraph.Inlines.Add(new LineBreak());
-            paragraph.Inlines.Add(new LineBreak());
-            
-            // Standart Kurulum
-            var standardTitle = new Run(LanguageManager.GetText("main_help", "standard_title"))
-            {
-                FontWeight = FontWeights.Bold
-            };
-            var standardText = new Run(LanguageManager.GetText("main_help", "standard_text"));
-            paragraph.Inlines.Add(standardTitle);
-            paragraph.Inlines.Add(standardText);
-            paragraph.Inlines.Add(new LineBreak());
-            paragraph.Inlines.Add(new LineBreak());
-
-            // Alternatif Kurulum
-            var alternativeTitle = new Run(LanguageManager.GetText("main_help", "alternative_title"))
-            {
-                FontWeight = FontWeights.Bold
-            };
-            var alternativeText = new Run(LanguageManager.GetText("main_help", "alternative_text"));
-            paragraph.Inlines.Add(alternativeTitle);
-            paragraph.Inlines.Add(alternativeText);
-            paragraph.Inlines.Add(new LineBreak());
-            paragraph.Inlines.Add(new LineBreak());
-
-            // Tarayıcılar için tünelleme
-            var browserTitle = new Run(LanguageManager.GetText("main_help", "browser_title"))
-            {
-                FontWeight = FontWeights.Bold
-            };
-            var browserText = new Run(LanguageManager.GetText("main_help", "browser_text"));
-            paragraph.Inlines.Add(browserTitle);
-            paragraph.Inlines.Add(browserText);
-            paragraph.Inlines.Add(new LineBreak());
-            paragraph.Inlines.Add(new LineBreak());
-            
-            // WireSock yineleyici kur
-            var repeaterTitle = new Run(LanguageManager.GetText("main_help", "repeater_title"))
-            {
-                FontWeight = FontWeights.Bold
-            };
-            var repeaterText = new Run(LanguageManager.GetText("main_help", "repeater_text"));
-            paragraph.Inlines.Add(repeaterTitle);
-            paragraph.Inlines.Add(repeaterText);
-            paragraph.Inlines.Add(new LineBreak());
-            paragraph.Inlines.Add(new LineBreak());
-
-            // Klasör listesi özelleştirme
-            var folderTitle = new Run(LanguageManager.GetText("main_help", "folder_title"))
-            {
-                FontWeight = FontWeights.Bold
-            };
-            var folderText = new Run(LanguageManager.GetText("main_help", "folder_text"));
-            paragraph.Inlines.Add(folderTitle);
-            paragraph.Inlines.Add(folderText);
-            paragraph.Inlines.Add(new LineBreak());
-
-            // Alt başlıklar
-            var subTitle1 = new Run(LanguageManager.GetText("main_help", "add_folder_title"))
-            {
-                FontWeight = FontWeights.Bold
-            };
-            var subText1 = new Run(LanguageManager.GetText("main_help", "add_folder_text"));
-            paragraph.Inlines.Add(subTitle1);
-            paragraph.Inlines.Add(subText1);
-            paragraph.Inlines.Add(new LineBreak());
-
-            var subTitle2 = new Run(LanguageManager.GetText("main_help", "clear_list_title"))
-            {
-                FontWeight = FontWeights.Bold
-            };
-            var subText2 = new Run(LanguageManager.GetText("main_help", "clear_list_text"));
-            paragraph.Inlines.Add(subTitle2);
-            paragraph.Inlines.Add(subText2);
-            paragraph.Inlines.Add(new LineBreak());
-
-            var subTitle3 = new Run(LanguageManager.GetText("main_help", "custom_install_title"))
-            {
-                FontWeight = FontWeights.Bold
-            };
-            var subText3 = new Run(LanguageManager.GetText("main_help", "custom_install_text"));
-            paragraph.Inlines.Add(subTitle3);
-            paragraph.Inlines.Add(subText3);
-            paragraph.Inlines.Add(new LineBreak());
-
-            var subTitle4 = new Run(LanguageManager.GetText("main_help", "create_config_title"))
-            {
-                FontWeight = FontWeights.Bold
-            };
-            var subText4 = new Run(LanguageManager.GetText("main_help", "create_config_text"));
-            paragraph.Inlines.Add(subTitle4);
-            paragraph.Inlines.Add(subText4);
-            paragraph.Inlines.Add(new LineBreak());
-            paragraph.Inlines.Add(new LineBreak());
-
-            // Çıkış
-            var exitTitle = new Run(LanguageManager.GetText("main_help", "exit_title"))
-            {
-                FontWeight = FontWeights.Bold
-            };
-            var exitText = new Run(LanguageManager.GetText("main_help", "exit_text"));
-            paragraph.Inlines.Add(exitTitle);
-            paragraph.Inlines.Add(exitText);
-            paragraph.Inlines.Add(new LineBreak());
-            paragraph.Inlines.Add(new LineBreak());
-
-            // Not 2
-            var note2 = new Run(LanguageManager.GetText("main_help", "note2"))
-            {
-                FontWeight = FontWeights.Bold
-            };
-            var note2Text = new Run(LanguageManager.GetText("main_help", "note2_text"));
-            paragraph.Inlines.Add(note2);
-            paragraph.Inlines.Add(note2Text);
-
-            helpText.Document = new FlowDocument(paragraph);
-            
-            // RichTextBox tema renklerini ayarla
-            if (isDarkMode)
-            {
-                helpText.Foreground = System.Windows.Media.Brushes.White;
-            }
-            else
-            {
-                helpText.Foreground = System.Windows.Media.Brushes.Black;
-            }
-            
-            contentStack.Children.Add(helpText);
-
-            scrollViewer.Content = contentStack;
-            mainGrid.Children.Add(scrollViewer);
-            Grid.SetRow(scrollViewer, 1);
-
-            // Kapat butonu
-            var closeButton = new System.Windows.Controls.Button
-            {
-                Content = LanguageManager.GetText("main_help", "close_button"),
-                Width = 100,
-                Height = 35,
-                Margin = new Thickness(0, 20, 0, 20),
-                HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
-                Background = isDarkMode ? 
-                    new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#373738")) :
-                    System.Windows.Media.Brushes.LightGray,
-                Foreground = isDarkMode ? System.Windows.Media.Brushes.White : System.Windows.Media.Brushes.Black
-            };
-            closeButton.Click += (s, args) => infoWindow.Close();
-            Grid.SetRow(closeButton, 2);
-            mainGrid.Children.Add(closeButton);
-
-            infoWindow.Content = mainGrid;
-            infoWindow.ShowDialog();
-        }
-
         private void BtnHelpByeDPI_Click(object sender, RoutedEventArgs e)
         {
             // Mevcut tema durumunu kontrol et
@@ -7789,16 +7524,6 @@ Get-DnsClientDohServerAddress
             UpdateGoodbyeDPIWindowSize();
         }
         
-        // Ana Sayfa pencere boyutunu merkezi olarak güncelleyen metod
-        private void UpdateMainPageWindowSize()
-        {
-            var animationDuration = TimeSpan.FromMilliseconds(400);
-            var totalHeight = _mainPageAdvancedSettingsActive ? _mainPageAdvancedSettingsHeight : _mainPageBaseHeight;
-            
-            // Pencere boyutunu animasyonlu olarak güncelle
-            AnimateWindowHeight(totalHeight, animationDuration);
-        }
-        
         // Zapret pencere boyutunu merkezi olarak güncelleyen metod
         private void UpdateGoodbyeDPIWindowSize()
         {
@@ -8104,7 +7829,7 @@ Get-DnsClientDohServerAddress
         {
             try
             {
-                bool isZapretOrGoodbyeDPITab = (TabControl.SelectedIndex == 2); // GoodbyeDPI = 2
+                bool isZapretOrGoodbyeDPITab = (TabControl.SelectedIndex == 1); // GoodbyeDPI = 1
                 
                 if (!isZapretOrGoodbyeDPITab)
                 {
