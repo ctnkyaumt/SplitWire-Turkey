@@ -9911,27 +9911,59 @@ Get-DnsClientDohServerAddress
 
                 var allMatches = new List<string>();
 
-                if (scanLevelStr != "force")
+                if (scanLevelStr == "keift")
                 {
-                    // Fast single-domain scan (matches the keift/video approach: the reference
-                    // screenshots only test discord.com). Cut the log early to keep the scan
-                    // short, then take a working HTTPS strategy — zapret applies the chosen
-                    // strategy to ALL traffic, so a good strategy for one representative blocked
-                    // HTTPS site generalizes. Multi-domain verification is the "full" level below.
-                    //   keift  => cut early (2000) and give up fast to the universal preset
-                    //   quick  => cut later (6000) and keep probing until a strategy is found
-                    bool keiftMode = scanLevelStr == "keift";
-                    int cut = keiftMode ? 2000 : 6000;
-                    await RunBlockcheck("discord.com", "quick", earlyStop: true, keiftKill: keiftMode, cutoffStart: cut);
+                    // Instant: one short single-domain probe (discord.com). Take a working HTTPS
+                    // strategy, otherwise fall back to a known-good universal preset.
+                    await RunBlockcheck("discord.com", "quick", earlyStop: true, keiftKill: true, cutoffStart: 2000);
                     var strategies = await ExtractStrategiesFromLogForDomain(blockcheckLogPath, "discord.com");
                     if (strategies.Any())
                     {
-                        File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Hızlı tarama: {strategies.Count} strateji bulundu.\n");
+                        File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Keift: {strategies.Count} strateji bulundu.\n");
                         allMatches.AddRange(strategies);
                     }
                     else
                     {
-                        File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Hızlı tarama: strateji bulunamadı. Evrensel fallback preset uygulanıyor...\n");
+                        File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Keift: strateji bulunamadı. Evrensel fallback preset uygulanıyor...\n");
+                        allMatches.Add("--dpi-desync=fakeddisorder --dpi-desync-ttl=1 --dpi-desync-autottl=-5 --dpi-desync-split-pos=1");
+                    }
+                }
+                else if (scanLevelStr != "force")
+                {
+                    // Standard: scan a few representative blocked domains separately (each cut
+                    // early to stay fast), then keep only the HTTPS strategies that worked for
+                    // ALL of them (C# intersection). This is what makes the chosen preset
+                    // universal rather than discord-only. Two domains keeps it faster than three.
+                    var quickDomains = new[] { "discord.com", "pastebin.com" };
+                    var perDomain = new Dictionary<string, HashSet<string>>();
+                    foreach (var d in quickDomains)
+                    {
+                        await RunBlockcheck(d, "quick", earlyStop: true, keiftKill: false, cutoffStart: 3000);
+                        perDomain[d] = await ExtractStrategiesFromLogForDomain(blockcheckLogPath, d);
+                        File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Standart tarama: {d} için {perDomain[d].Count} HTTPS stratejisi bulundu.\n");
+                    }
+
+                    var withResults = perDomain.Values.Where(v => v.Count > 0).ToList();
+                    if (withResults.Count > 0)
+                    {
+                        var intersection = new HashSet<string>(withResults[0]);
+                        foreach (var s in withResults.Skip(1)) intersection.IntersectWith(s);
+
+                        if (intersection.Any())
+                        {
+                            File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Standart tarama: {intersection.Count} ortak strateji bulundu.\n");
+                            allMatches.AddRange(intersection);
+                        }
+                        else
+                        {
+                            File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] UYARI: Ortak strateji yok. Tüm bulunan stratejiler ekleniyor (hepsi her sitede çalışmayabilir).\n");
+                            foreach (var s in perDomain.Values) allMatches.AddRange(s);
+                        }
+                    }
+
+                    if (!allMatches.Any())
+                    {
+                        File.AppendAllText(zapretLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Standart tarama: strateji bulunamadı. Evrensel fallback preset uygulanıyor...\n");
                         allMatches.Add("--dpi-desync=fakeddisorder --dpi-desync-ttl=1 --dpi-desync-autottl=-5 --dpi-desync-split-pos=1");
                     }
                 }
