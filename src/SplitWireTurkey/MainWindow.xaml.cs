@@ -3212,10 +3212,14 @@ namespace SplitWireTurkey
                     File.AppendAllText(logPath, $"{service} hizmeti silindi.\n");
                 }
 
+                // Batch/tek seferlik kurulumlardan kalan süreçleri de sonlandır (sc'nin ulaşamadığı)
+                File.AppendAllText(logPath, "Kalan DPI bypass süreçleri sonlandırılıyor...\n");
+                await KillDpiBypassProcessesAsync(logPath);
+
                 // Windows Firewall kurallarını da temizle
                 File.AppendAllText(logPath, "Windows Firewall kuralları temizleniyor...\n");
                 await RemoveFirewallRulesAsync();
-                
+
                 // Drover dosyalarını temizle
                 File.AppendAllText(logPath, "Discord klasöründeki drover dosyaları temizleniyor...\n");
                 await CleanupDroverFilesAsync();
@@ -3905,11 +3909,15 @@ namespace SplitWireTurkey
                     }
                 }
                 
+                // Batch/tek seferlik kurulumlardan kalan süreçleri de sonlandır (sc'nin ulaşamadığı)
+                File.AppendAllText(logPath, "Kalan DPI bypass süreçleri sonlandırılıyor...\n");
+                await KillDpiBypassProcessesAsync(logPath);
+
                 // Windows Firewall kurallarını da temizle
                 File.AppendAllText(logPath, "Windows Firewall kuralları temizleniyor...\n");
                 await RemoveFirewallRulesAsync();
                 File.AppendAllText(logPath, "Windows Firewall kuralları temizleme tamamlandı.\n");
-                
+
                 // Hizmet kaldırma işlemlerinin tamamlanmasını bekle
                 File.AppendAllText(logPath, "Hizmet kaldırma işlemlerinin tamamlanması bekleniyor...\n");
                 await Task.Delay(2000); // 2 saniye bekle
@@ -11045,6 +11053,33 @@ echo Hizmet kurulum işlemi tamamlandı.
             }
         }
 
+        // Kills any leftover DPI-bypass processes. Services are removed with sc stop/delete, but
+        // "batch / one-time" installs run these as standalone processes that sc cannot touch.
+        // Killing them also releases file locks on the binaries in %localappdata%\SplitWire-Turkey
+        // so the uninstaller can delete that folder cleanly.
+        private async Task KillDpiBypassProcessesAsync(string logPath)
+        {
+            var names = new[] { "winws", "winws2", "ciadpi", "goodbyedpi" };
+            foreach (var name in names)
+            {
+                try
+                {
+                    foreach (var process in Process.GetProcessesByName(name))
+                    {
+                        try
+                        {
+                            process.Kill();
+                            await process.WaitForExitAsync();
+                            try { File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {name}.exe süreci sonlandırıldı (PID: {process.Id}).\n"); } catch { }
+                        }
+                        catch { }
+                        finally { process.Dispose(); }
+                    }
+                }
+                catch { }
+            }
+        }
+
         #endregion
 
         // Service Remove Button Click Handlers
@@ -14739,6 +14774,18 @@ echo Hizmet kurulum işlemi tamamlandı.
                 {
                     File.AppendAllText(logPath, $"4.3-4.4. WebCord temizleme hatası: {ex.Message}\n");
                     // Hata olsa bile devam et
+                }
+
+                // 4.45. Kalan DPI bypass süreçlerini sonlandır (winws2.exe/ciadpi.exe/goodbyedpi.exe
+                // dosya kilitlerini bırakması için, aksi halde aşağıdaki klasör silme başarısız olur)
+                try
+                {
+                    File.AppendAllText(logPath, "4.45. Kalan DPI bypass süreçleri sonlandırılıyor...\n");
+                    await KillDpiBypassProcessesAsync(logPath);
+                }
+                catch (Exception ex)
+                {
+                    File.AppendAllText(logPath, $"4.45. Süreç sonlandırma hatası: {ex.Message}\n");
                 }
 
                 // 4.5. %localappdata%/SplitWire-Turkey klasörünü sil
