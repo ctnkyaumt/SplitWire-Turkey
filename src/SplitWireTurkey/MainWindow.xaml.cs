@@ -2023,20 +2023,10 @@ namespace SplitWireTurkey
                 
                 // Zapret sekmesi tooltip'leri
                 
-                if (tooltipScan != null)
-                    tooltipScan.Content = LanguageManager.GetText("ui_texts", "tooltip_scan");
                 
-                if (tooltipPreset != null)
-                    tooltipPreset.Content = LanguageManager.GetText("ui_texts", "tooltip_preset");
                 
-                if (tooltipEditPreset != null)
-                    tooltipEditPreset.Content = LanguageManager.GetText("ui_texts", "tooltip_edit_preset");
                 
-                if (tooltipPresetService != null)
-                    tooltipPresetService.Content = LanguageManager.GetText("ui_texts", "tooltip_preset_service");
                 
-                if (tooltipPresetOnce != null)
-                    tooltipPresetOnce.Content = LanguageManager.GetText("ui_texts", "tooltip_preset_once");
                 
                 // GoodbyeDPI sekmesi tooltip'leri
                 if (tooltipGoodbyeDPIPreset != null)
@@ -2097,8 +2087,6 @@ namespace SplitWireTurkey
                 UpdateDiscordActionTooltips();
                 
                 // Gelişmiş sekmesi tooltip'leri
-                if (tooltipRemoveService != null)
-                    tooltipRemoveService.Content = LanguageManager.GetText("ui_texts", "tooltip_remove_service");
                 
                 if (tooltipByeDPIRemoveService != null)
                     tooltipByeDPIRemoveService.Content = LanguageManager.GetText("ui_texts", "tooltip_remove_service");
@@ -2137,11 +2125,7 @@ namespace SplitWireTurkey
                 
 
                 // Zapret metinleri
-                if (txtScan != null)
-                    txtScan.Text = LanguageManager.GetText("ui_texts", "scan");
                 
-                if (txtPresets != null)
-                    txtPresets.Text = LanguageManager.GetText("ui_texts", "presets");
                 
                 if (txtPresetsGoodbyeDPI != null)
                     txtPresetsGoodbyeDPI.Text = LanguageManager.GetText("ui_texts", "presets");
@@ -2426,35 +2410,10 @@ namespace SplitWireTurkey
                 
                 // Zapret sekmesi tooltip'leri
                 
-                if (tooltipScan != null)
-                {
-                    tooltipScan.Background = tooltipBackground;
-                    tooltipScan.Foreground = tooltipForeground;
-                }
                 
-                if (tooltipPreset != null)
-                {
-                    tooltipPreset.Background = tooltipBackground;
-                    tooltipPreset.Foreground = tooltipForeground;
-                }
                 
-                if (tooltipEditPreset != null)
-                {
-                    tooltipEditPreset.Background = tooltipBackground;
-                    tooltipEditPreset.Foreground = tooltipForeground;
-                }
                 
-                if (tooltipPresetService != null)
-                {
-                    tooltipPresetService.Background = tooltipBackground;
-                    tooltipPresetService.Foreground = tooltipForeground;
-                }
                 
-                if (tooltipPresetOnce != null)
-                {
-                    tooltipPresetOnce.Background = tooltipBackground;
-                    tooltipPresetOnce.Foreground = tooltipForeground;
-                }
                 
                 // GoodbyeDPI sekmesi tooltip'leri
                 if (tooltipGoodbyeDPIPreset != null)
@@ -2574,11 +2533,6 @@ namespace SplitWireTurkey
                 }
 
                 // Gelişmiş sekmesi tooltip'leri
-                if (tooltipRemoveService != null)
-                {
-                    tooltipRemoveService.Background = tooltipBackground;
-                    tooltipRemoveService.Foreground = tooltipForeground;
-                }
                 
                 if (tooltipByeDPIRemoveService != null)
                 {
