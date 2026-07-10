@@ -10,9 +10,9 @@
     <RootNamespace>SplitWire_Turkey</RootNamespace>
     <AssemblyTitle>SplitWire-Turkey</AssemblyTitle>
     <AssemblyDescription>Various restriction bypass tools</AssemblyDescription>
-    <AssemblyCompany>Çağrı Taşkın</AssemblyCompany>
+    <AssemblyCompany>ctnkyaumt (originally from Çağrı Taşkın)</AssemblyCompany>
     <AssemblyProduct>SplitWire-Turkey</AssemblyProduct>
-    <AssemblyCopyright>© 2025 Çağrı Taşkın</AssemblyCopyright>
+    <AssemblyCopyright>© 2026 ctnkyaumt (originally from Çağrı Taşkın)</AssemblyCopyright>
     <AssemblyVersion>2.0.0</AssemblyVersion>
     <FileVersion>2.0.0</FileVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
