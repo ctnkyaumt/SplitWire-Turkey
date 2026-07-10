@@ -253,6 +253,16 @@ begin
   Result := UninstallLanguage;
 end;
 
+function IsUpgradeInstall(): Boolean;
+var
+  ExistingInstallPath: String;
+begin
+  // A previous install left InstallPath in the registry (removed only on full uninstall,
+  // see [Registry] Flags: uninsdeletekey). If present, this run is an upgrade over an
+  // existing installation rather than a fresh install.
+  Result := RegQueryStringValue(HKCU, 'SOFTWARE\SplitWire-Turkey', 'InstallPath', ExistingInstallPath);
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   LocalAppDataPath: String;
@@ -260,35 +270,44 @@ var
 begin
   if CurStep = ssInstall then
   begin
-    // Clean up localappdata\SplitWire-Turkey folder before installation
-    Log('=== Kurulum öncesi temizlik işlemi başlatılıyor ===');
-    
-    LocalAppDataPath := ExpandConstant('{localappdata}');
-    SplitWireTurkeyPath := LocalAppDataPath + '\SplitWire-Turkey';
-    
-    if DirExists(SplitWireTurkeyPath) then
+    // Only clean up localappdata\SplitWire-Turkey on a fresh install. On an upgrade this
+    // folder holds user data (GoodbyeDPI/ByeDPI presets, logs, WebCord) that must survive
+    // the update, so it is intentionally left untouched here.
+    if IsUpgradeInstall() then
     begin
-      Log('localappdata\SplitWire-Turkey klasörü bulundu, siliniyor...');
-      try
-        if DelTree(SplitWireTurkeyPath, True, True, True) then
-        begin
-          Log('localappdata\SplitWire-Turkey klasörü başarıyla silindi');
-        end
-        else
-        begin
-          Log('Uyarı: localappdata\SplitWire-Turkey klasörü tamamen silinemedi (bazı dosyalar kullanımda olabilir)');
-                        // Continue with installation even if cleanup is incomplete
-        end;
-      except
-        Log('HATA: localappdata\SplitWire-Turkey klasörü silinirken exception oluştu, kurulum devam ediyor');
-      end;
+      Log('=== Mevcut kurulum tespit edildi (güncelleme), localappdata\SplitWire-Turkey korunuyor ===');
     end
     else
     begin
-      Log('localappdata\SplitWire-Turkey klasörü bulunamadı, temizlik gerekmiyor');
+      Log('=== Kurulum öncesi temizlik işlemi başlatılıyor (ilk kurulum) ===');
+
+      LocalAppDataPath := ExpandConstant('{localappdata}');
+      SplitWireTurkeyPath := LocalAppDataPath + '\SplitWire-Turkey';
+
+      if DirExists(SplitWireTurkeyPath) then
+      begin
+        Log('localappdata\SplitWire-Turkey klasörü bulundu, siliniyor...');
+        try
+          if DelTree(SplitWireTurkeyPath, True, True, True) then
+          begin
+            Log('localappdata\SplitWire-Turkey klasörü başarıyla silindi');
+          end
+          else
+          begin
+            Log('Uyarı: localappdata\SplitWire-Turkey klasörü tamamen silinemedi (bazı dosyalar kullanımda olabilir)');
+                          // Continue with installation even if cleanup is incomplete
+          end;
+        except
+          Log('HATA: localappdata\SplitWire-Turkey klasörü silinirken exception oluştu, kurulum devam ediyor');
+        end;
+      end
+      else
+      begin
+        Log('localappdata\SplitWire-Turkey klasörü bulunamadı, temizlik gerekmiyor');
+      end;
+
+      Log('=== Kurulum öncesi temizlik işlemi tamamlandı ===');
     end;
-    
-    Log('=== Kurulum öncesi temizlik işlemi tamamlandı ===');
   end;
 end;
 

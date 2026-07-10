@@ -1411,6 +1411,7 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     
                     <!-- Hizmetler Başlığı -->
@@ -1755,14 +1756,36 @@
                                      Style="{StaticResource ModernToggleSwitchStyle}"
                                      Checked="ChkAutoDNSChange_Checked"
                                      Unchecked="ChkAutoDNSChange_Unchecked"/>
-                        <TextBlock x:Name="txtAutoDNSChange" Text="Otomatik DNS değişikliği yap" 
+                        <TextBlock x:Name="txtAutoDNSChange" Text="Otomatik DNS değişikliği yap"
                                    FontFamily="{StaticResource Montserrat}"
                                    VerticalAlignment="Center"
                                    Margin="10,0,0,0"/>
                     </StackPanel>
-                    
+
+                    <!-- Güncellemeleri Otomatik Kontrol Et Switch -->
+                    <StackPanel Grid.Row="11" Orientation="Horizontal"
+                               HorizontalAlignment="Center"
+                               Margin="0,10,0,10"
+                               ToolTipService.InitialShowDelay="1000"
+                               ToolTipService.ShowDuration="8000">
+                        <StackPanel.ToolTip>
+                            <ToolTip x:Name="tooltipCheckForUpdates"
+                                     FontFamily="Poppins Regular"
+                                     FontSize="12"
+                                     Placement="Mouse"/>
+                        </StackPanel.ToolTip>
+                        <ToggleButton x:Name="chkCheckForUpdates"
+                                     Style="{StaticResource ModernToggleSwitchStyle}"
+                                     Checked="ChkCheckForUpdates_Checked"
+                                     Unchecked="ChkCheckForUpdates_Unchecked"/>
+                        <TextBlock x:Name="txtCheckForUpdates" Text="Güncellemeleri otomatik kontrol et"
+                                   FontFamily="{StaticResource Montserrat}"
+                                   VerticalAlignment="Center"
+                                   Margin="10,0,0,0"/>
+                    </StackPanel>
+
                     <!-- Tüm Hizmetleri Kaldır Butonu -->
-                    <StackPanel Grid.Row="11" HorizontalAlignment="Center" Margin="0,20,0,0">
+                    <StackPanel Grid.Row="12" HorizontalAlignment="Center" Margin="0,20,0,0">
                         <Button x:Name="btnRemoveAllServices" 
                                 Content="Tüm Hizmetleri Kaldır" 
                                 FontFamily="{StaticResource PoppinsRegular}"
@@ -1793,7 +1816,7 @@
                     </StackPanel>
                     
                     <!-- DNS ve DoH Ayarlarını Geri Al Butonu -->
-                    <StackPanel Grid.Row="12" HorizontalAlignment="Center" Margin="0,15,0,0">
+                    <StackPanel Grid.Row="13" HorizontalAlignment="Center" Margin="0,15,0,0">
                         <Button x:Name="btnResetDNSDoH" 
                                 Content="DNS ve DoH Ayarlarını Geri Al" 
                                 FontFamily="{StaticResource PoppinsRegular}"
@@ -1824,7 +1847,7 @@
                     </StackPanel>
                     
                     <!-- SplitWire-Turkey'i Kaldır Butonu -->
-                    <StackPanel Grid.Row="13" HorizontalAlignment="Center" Margin="0,15,0,0">
+                    <StackPanel Grid.Row="14" HorizontalAlignment="Center" Margin="0,15,0,0">
                         <Button x:Name="btnUninstallSplitWire" 
                                 Content="SplitWire-Turkey'i Kaldır" 
                                 FontFamily="{StaticResource PoppinsRegular}"
@@ -1856,7 +1879,7 @@
                     
                     <!-- Gelişmiş Yardım Butonu -->
                     <Button x:Name="btnHelpAdvanced"
-                            Grid.Row="13"
+                            Grid.Row="14"
                             Content="?"
                             Style="{StaticResource InfoButtonStyle}"
                             HorizontalAlignment="Right"
@@ -1865,7 +1888,7 @@
                             Click="BtnHelpAdvanced_Click"/>
 
                     <!-- Çıkış Butonu -->
-                    <StackPanel Grid.Row="14" HorizontalAlignment="Center" Margin="0,15,0,0">
+                    <StackPanel Grid.Row="15" HorizontalAlignment="Center" Margin="0,15,0,0">
                         <Button x:Name="btnExit"
                                 Content="Çıkış"
                                 FontFamily="{StaticResource PoppinsRegular}"

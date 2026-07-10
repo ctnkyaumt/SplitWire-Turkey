@@ -71,6 +71,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>res\restart.bat</Link>
     </Content>
+    <Content Include="Resources\update_installer.bat" Condition="Exists('Resources\update_installer.bat')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>res\update_installer.bat</Link>
+    </Content>
   </ItemGroup>
 
 </Project> 

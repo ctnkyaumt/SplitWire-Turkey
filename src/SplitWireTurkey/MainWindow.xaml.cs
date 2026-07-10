@@ -94,6 +94,13 @@ namespace SplitWireTurkey
         private const string REG_AUTO_DNS_CHANGE = "AutoDNSChange";
         private const string REG_GOODBYEDPI_PRESET = "GoodbyeDPIPreset";
         private const string REG_BYEDPI_PRESET = "ByeDPIPreset";
+        private const string REG_CHECK_FOR_UPDATES = "CheckForUpdates";
+
+        // Güncelleme sabitleri
+        private const string UPDATE_REPO_OWNER = "ctnkyaumt";
+        private const string UPDATE_REPO_NAME = "SplitWire-Turkey";
+        private const string UPDATE_INSTALLER_ASSET_PREFIX = "SplitWire-Turkey-Setup-Windows-";
+        private bool _isUpdating = false;
         
         // Dil değişkenleri
         private string _currentLanguage = "TR";
@@ -124,38 +131,37 @@ namespace SplitWireTurkey
         }
 
         /// <summary>
-        /// GitHub'dan en son sürümü alır
+        /// GitHub'dan en son sürüm (release) bilgisini alır
         /// </summary>
-        private async Task<string> GetLatestVersionFromGitHubAsync()
+        private async Task<GitHubRelease> GetLatestReleaseFromGitHubAsync()
         {
             try
             {
                 WriteUpdateLog("GitHub'dan en son sürüm bilgisi alınıyor...");
-                
+
                 using var httpClient = new HttpClient();
                 httpClient.DefaultRequestHeaders.Add("User-Agent", "SplitWire-Turkey");
-                
-                var response = await httpClient.GetStringAsync("https://api.github.com/repos/ctnkyaumt/SplitWire-Turkey/releases/latest");
+
+                var response = await httpClient.GetStringAsync($"https://api.github.com/repos/{UPDATE_REPO_OWNER}/{UPDATE_REPO_NAME}/releases/latest");
                 WriteUpdateLog($"GitHub API Response alındı: {response.Length} karakter");
-                
+
                 var releaseInfo = JsonSerializer.Deserialize<GitHubRelease>(response);
-                
+
                 if (releaseInfo == null)
                 {
                     WriteUpdateLog("GitHub API response'u null olarak deserialize edildi");
-                    return "1.0.0";
+                    return null;
                 }
-                
-                var latestVersion = releaseInfo?.TagName?.TrimStart('v') ?? "1.0.0";
-                WriteUpdateLog($"GitHub'dan alınan en son sürüm: {latestVersion}");
-                
-                return latestVersion;
+
+                WriteUpdateLog($"GitHub'dan alınan en son sürüm: {releaseInfo.TagName}, asset sayısı: {releaseInfo.Assets?.Count ?? 0}");
+
+                return releaseInfo;
             }
             catch (Exception ex)
             {
                 WriteUpdateLog($"GitHub'dan sürüm alınırken hata: {ex.Message}");
                 Debug.WriteLine($"GitHub'dan sürüm alınırken hata: {ex.Message}");
-                return "1.0.0";
+                return null;
             }
         }
 
@@ -167,13 +173,13 @@ namespace SplitWireTurkey
             try
             {
                 WriteUpdateLog($"Versiyon karşılaştırması: Mevcut={currentVersion}, En son={latestVersion}");
-                
+
                 var current = Version.Parse(currentVersion);
                 var latest = Version.Parse(latestVersion);
                 var isNewer = latest > current;
-                
+
                 WriteUpdateLog($"Versiyon karşılaştırma sonucu: {(isNewer ? "Yeni sürüm mevcut" : "Güncel sürüm")}");
-                
+
                 return isNewer;
             }
             catch (Exception ex)
@@ -185,12 +191,25 @@ namespace SplitWireTurkey
         }
 
         /// <summary>
-        /// Güncelleme bildirimi gösterir
+        /// Sürümün kurulum (installer) asset'ini release içindeki dosyalardan bulur
         /// </summary>
-        private void ShowUpdateNotification(string latestVersion)
+        private GitHubReleaseAsset FindInstallerAsset(GitHubRelease release)
+        {
+            return release?.Assets?.FirstOrDefault(a =>
+                !string.IsNullOrEmpty(a.Name) &&
+                !string.IsNullOrEmpty(a.BrowserDownloadUrl) &&
+                a.Name.StartsWith(UPDATE_INSTALLER_ASSET_PREFIX, StringComparison.OrdinalIgnoreCase) &&
+                a.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>
+        /// Güncelleme bildirimi gösterir; kullanıcı onaylarsa otomatik güncellemeyi başlatır,
+        /// uygun kurulum dosyası bulunamazsa GitHub sayfasını açmaya geri döner
+        /// </summary>
+        private void ShowUpdateNotification(GitHubRelease release, string latestVersion)
         {
             WriteUpdateLog($"Güncelleme bildirimi gösteriliyor: Mevcut={GetApplicationVersion()}, Yeni={latestVersion}");
-            
+
             var result = System.Windows.MessageBox.Show(
                 LanguageManager.GetText("messages", "update_available").Replace("{0}", GetApplicationVersion()).Replace("{1}", latestVersion),
                 LanguageManager.GetText("messages", "update_title"),
@@ -198,15 +217,22 @@ namespace SplitWireTurkey
                 MessageBoxImage.Information
             );
 
-            if (result == MessageBoxResult.Yes)
+            if (result != MessageBoxResult.Yes)
             {
-                WriteUpdateLog("Kullanıcı güncelleme sayfasını açmayı seçti");
+                WriteUpdateLog("Kullanıcı otomatik güncellemeyi reddetti");
+                return;
+            }
+
+            var asset = FindInstallerAsset(release);
+            if (asset == null)
+            {
+                WriteUpdateLog("Bu sürüm için otomatik kurulum dosyası bulunamadı, GitHub sayfası açılıyor");
                 OpenGitHubReleasesPage();
+                return;
             }
-            else
-            {
-                WriteUpdateLog("Kullanıcı güncelleme sayfasını açmayı reddetti");
-            }
+
+            WriteUpdateLog("Kullanıcı otomatik güncellemeyi kabul etti");
+            _ = PerformSelfUpdateAsync(asset, latestVersion);
         }
 
         /// <summary>
@@ -217,13 +243,13 @@ namespace SplitWireTurkey
             try
             {
                 WriteUpdateLog("GitHub releases sayfası tarayıcıda açılıyor...");
-                
+
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = "https://github.com/ctnkyaumt/SplitWire-Turkey/releases/latest",
+                    FileName = $"https://github.com/{UPDATE_REPO_OWNER}/{UPDATE_REPO_NAME}/releases/latest",
                     UseShellExecute = true
                 });
-                
+
                 WriteUpdateLog("GitHub releases sayfası başarıyla açıldı");
             }
             catch (Exception ex)
@@ -235,6 +261,188 @@ namespace SplitWireTurkey
         }
 
         /// <summary>
+        /// Güncelleme indirme/kurulum ilerlemesini loading overlay üzerinde gösterir
+        /// </summary>
+        private void ShowUpdateProgress(string text, int percent, bool indeterminate)
+        {
+            loadingOverlay.Visibility = Visibility.Visible;
+            if (loadingText != null)
+            {
+                loadingText.Text = text;
+            }
+            if (loadingProgressBar != null)
+            {
+                loadingProgressBar.IsIndeterminate = indeterminate;
+                if (!indeterminate)
+                {
+                    loadingProgressBar.Minimum = 0;
+                    loadingProgressBar.Maximum = 100;
+                    loadingProgressBar.Value = percent;
+                }
+            }
+        }
+
+        private void HideUpdateProgress()
+        {
+            loadingOverlay.Visibility = Visibility.Collapsed;
+            if (loadingProgressBar != null)
+            {
+                loadingProgressBar.IsIndeterminate = true;
+            }
+        }
+
+        /// <summary>
+        /// Güncelleme kurulum dosyasını verilen URL'den, ilerleme bildirimiyle indirir
+        /// </summary>
+        private async Task DownloadUpdateInstallerAsync(string downloadUrl, string destinationPath, Action<int> onProgress)
+        {
+            using var httpClient = CreateHttpClientWithAdvancedSettings();
+            httpClient.Timeout = TimeSpan.FromMinutes(10);
+
+            using var response = await httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+
+            var totalBytes = response.Content.Headers.ContentLength ?? -1L;
+            var buffer = new byte[81920];
+            var totalRead = 0L;
+            var lastReportedPercent = -1;
+
+            using (var httpStream = await response.Content.ReadAsStreamAsync())
+            using (var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, buffer.Length, useAsync: true))
+            {
+                int bytesRead;
+                while ((bytesRead = await httpStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                {
+                    await fileStream.WriteAsync(buffer, 0, bytesRead);
+                    totalRead += bytesRead;
+
+                    if (totalBytes > 0)
+                    {
+                        var percent = (int)(totalRead * 100 / totalBytes);
+                        if (percent != lastReportedPercent)
+                        {
+                            lastReportedPercent = percent;
+                            onProgress?.Invoke(percent);
+                        }
+                    }
+                }
+            }
+
+            if (totalRead <= 0)
+            {
+                throw new Exception("İndirilen güncelleme dosyası boş.");
+            }
+        }
+
+        /// <summary>
+        /// Güncelleyici scripti başlatır ve uygulamayı kapatır. Script; bu uygulamanın kapanmasını
+        /// bekler, kurulumu sessizce (mevcut ayarları/hizmetleri koruyarak) çalıştırır, uygulamayı
+        /// yeniden başlatır ve geçici güncelleme dosyalarını temizler.
+        /// </summary>
+        private void LaunchUpdaterAndExit(string installerPath)
+        {
+            var updaterBatPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "res", "update_installer.bat");
+            var appExePath = Process.GetCurrentProcess().MainModule.FileName;
+
+            if (!File.Exists(updaterBatPath))
+            {
+                throw new FileNotFoundException("Güncelleyici script bulunamadı", updaterBatPath);
+            }
+
+            WriteUpdateLog($"Güncelleyici script başlatılıyor: {updaterBatPath}");
+
+            _isUpdating = true;
+            _isRestarting = true; // Closing handler'ının çıkış onayı istemesini engelle
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = updaterBatPath,
+                Arguments = $"\"{installerPath}\" \"{appExePath}\"",
+                WorkingDirectory = Path.GetDirectoryName(updaterBatPath),
+                UseShellExecute = true,
+                WindowStyle = ProcessWindowStyle.Hidden
+            };
+
+            Process.Start(psi);
+
+            System.Windows.Application.Current.Shutdown();
+        }
+
+        /// <summary>
+        /// Güncellemeyi indirir, kurulumu başlatır ve uygulamayı yeniden başlatır
+        /// </summary>
+        private async Task PerformSelfUpdateAsync(GitHubReleaseAsset asset, string latestVersion)
+        {
+            try
+            {
+                WriteUpdateLog($"=== OTOMATİK GÜNCELLEME BAŞLATILIYOR: {asset.Name} ({latestVersion}) ===");
+
+                var downloadingText = LanguageManager.GetText("messages", "update_downloading");
+                Dispatcher.Invoke(() => ShowUpdateProgress(downloadingText, 0, false));
+
+                var updateDir = Path.Combine(Path.GetTempPath(), "SplitWire-Turkey-Update");
+                Directory.CreateDirectory(updateDir);
+                var installerPath = Path.Combine(updateDir, asset.Name);
+
+                // Bu uygulamanın kullanıcı kitlesi kısıtlı/filtrelenmiş ağlarda olabileceğinden
+                // indirme birkaç kez denenir (artan bekleme ile).
+                const int maxDownloadAttempts = 3;
+                Exception lastDownloadError = null;
+                for (int attempt = 1; attempt <= maxDownloadAttempts; attempt++)
+                {
+                    try
+                    {
+                        await DownloadUpdateInstallerAsync(asset.BrowserDownloadUrl, installerPath, percent =>
+                        {
+                            Dispatcher.Invoke(() => ShowUpdateProgress($"{downloadingText} %{percent}", percent, false));
+                        });
+                        lastDownloadError = null;
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        lastDownloadError = ex;
+                        WriteUpdateLog($"Güncelleme indirme denemesi {attempt}/{maxDownloadAttempts} başarısız: {ex.Message}");
+                        if (attempt < maxDownloadAttempts)
+                        {
+                            await Task.Delay(attempt * 3000);
+                        }
+                    }
+                }
+
+                if (lastDownloadError != null)
+                {
+                    throw lastDownloadError;
+                }
+
+                WriteUpdateLog($"Güncelleme dosyası indirildi: {installerPath}");
+
+                Dispatcher.Invoke(() => ShowUpdateProgress(LanguageManager.GetText("messages", "update_installing"), 0, true));
+
+                Dispatcher.Invoke(() => LaunchUpdaterAndExit(installerPath));
+            }
+            catch (Exception ex)
+            {
+                WriteUpdateLog($"Otomatik güncelleme başarısız: {ex.Message}");
+                Debug.WriteLine($"Otomatik güncelleme başarısız: {ex.Message}");
+
+                Dispatcher.Invoke(() =>
+                {
+                    HideUpdateProgress();
+                    var retry = System.Windows.MessageBox.Show(
+                        LanguageManager.GetText("messages", "update_failed").Replace("{0}", ex.Message),
+                        LanguageManager.GetText("messages", "error"),
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Error);
+                    if (retry == MessageBoxResult.Yes)
+                    {
+                        OpenGitHubReleasesPage();
+                    }
+                });
+            }
+        }
+
+        /// <summary>
         /// Versiyon kontrolü yapar
         /// </summary>
         private async Task CheckForUpdatesAsync()
@@ -242,23 +450,24 @@ namespace SplitWireTurkey
             try
             {
                 WriteUpdateLog("=== GÜNCELLEME KONTROLÜ BAŞLATILIYOR ===");
-                
+
                 var currentVersion = GetApplicationVersion();
                 WriteUpdateLog($"Mevcut uygulama sürümü: {currentVersion}");
-                
-                var latestVersion = await GetLatestVersionFromGitHubAsync();
-                
-                if (IsNewerVersionAvailable(currentVersion, latestVersion))
+
+                var release = await GetLatestReleaseFromGitHubAsync();
+                var latestVersion = release?.TagName?.TrimStart('v') ?? "1.0.0";
+
+                if (release != null && IsNewerVersionAvailable(currentVersion, latestVersion))
                 {
                     WriteUpdateLog("Yeni sürüm tespit edildi, kullanıcıya bildirim gösteriliyor...");
                     // UI thread'de güncelleme bildirimini göster
-                    Dispatcher.Invoke(() => ShowUpdateNotification(latestVersion));
+                    Dispatcher.Invoke(() => ShowUpdateNotification(release, latestVersion));
                 }
                 else
                 {
                     WriteUpdateLog("Uygulama güncel durumda, güncelleme gerekmiyor");
                 }
-                
+
                 WriteUpdateLog("=== GÜNCELLEME KONTROLÜ TAMAMLANDI ===");
             }
             catch (Exception ex)
@@ -283,7 +492,8 @@ namespace SplitWireTurkey
         private double _goodbyeDPIEditBlacklistHeight = 120;
         // Reduced from 830: removed the WireSock/Zapret service-status rows, added a small
         // Exit-button row. Estimate — nudge if there is still a visible gap.
-        private double _advancedHeight = 800;
+        // +55 for the added "Check for updates" toggle row.
+        private double _advancedHeight = 855;
 
         // Kaspersky overlay için klasör yolları
         public string CurrentProgramDirectory { get; private set; }
@@ -342,10 +552,13 @@ namespace SplitWireTurkey
             
             // Kaspersky ve WARP kontrollerini başlat
             _ = Task.Run(async () => await CheckCompatibilityAsync());
-            
-            // Versiyon kontrolü yap
-            _ = Task.Run(async () => await CheckForUpdatesAsync());
-            
+
+            // Versiyon kontrolü yap (kullanıcı ayarlardan kapatmadıysa)
+            if (LoadCheckForUpdatesFromRegistry())
+            {
+                _ = Task.Run(async () => await CheckForUpdatesAsync());
+            }
+
             CheckCompatibility();
             LoadGoodbyeDPIPresets();
             LoadByeDPIPresets();
@@ -360,7 +573,10 @@ namespace SplitWireTurkey
             
             // Registry'den Auto DNS Change ayarını yükle
             LoadAutoDNSChangeFromRegistryAndApply();
-            
+
+            // Registry'den Check For Updates ayarını yükle
+            LoadCheckForUpdatesFromRegistryAndApply();
+
             // Animasyon son opacity değerlerini güncelle
             UpdateAnimFinalOpacityValues();
             
@@ -817,7 +1033,62 @@ namespace SplitWireTurkey
                 return true; // Hata durumunda: aktif
             }
         }
-        
+
+        /// <summary>
+        /// Check For Updates switch durumunu Registry'ye kaydeder
+        /// </summary>
+        /// <param name="isEnabled">Otomatik güncelleme kontrolü aktif mi?</param>
+        private void SaveCheckForUpdatesToRegistry(bool isEnabled)
+        {
+            try
+            {
+                using (var key = Registry.CurrentUser.CreateSubKey(REG_KEY_PATH))
+                {
+                    if (key != null)
+                    {
+                        key.SetValue(REG_CHECK_FOR_UPDATES, isEnabled ? 1 : 0, RegistryValueKind.DWord);
+                        Debug.WriteLine($"Check For Updates ayarı Registry'ye kaydedildi: {(isEnabled ? "Aktif" : "Pasif")}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Check For Updates ayarı Registry'ye kaydedilemedi: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Check For Updates switch durumunu Registry'den okur
+        /// </summary>
+        /// <returns>Otomatik güncelleme kontrolü aktif mi? Hata durumunda true (varsayılan aktif)</returns>
+        private bool LoadCheckForUpdatesFromRegistry()
+        {
+            try
+            {
+                using (var key = Registry.CurrentUser.OpenSubKey(REG_KEY_PATH))
+                {
+                    if (key != null)
+                    {
+                        var checkForUpdatesValue = key.GetValue(REG_CHECK_FOR_UPDATES);
+                        if (checkForUpdatesValue != null && checkForUpdatesValue is int)
+                        {
+                            var isEnabled = (int)checkForUpdatesValue == 1;
+                            Debug.WriteLine($"Check For Updates ayarı Registry'den okundu: {(isEnabled ? "Aktif" : "Pasif")}");
+                            return isEnabled;
+                        }
+                    }
+                }
+
+                Debug.WriteLine("Registry'de Check For Updates ayarı bulunamadı, varsayılan aktif kullanılıyor");
+                return true; // Varsayılan: aktif
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Check For Updates ayarı Registry'den okunamadı: {ex.Message}, varsayılan aktif kullanılıyor");
+                return true; // Hata durumunda: aktif
+            }
+        }
+
         /// <summary>
         /// Registry'yi temizler (uninstall için)
         /// </summary>
@@ -1989,7 +2260,10 @@ namespace SplitWireTurkey
                 
                 if (txtAutoDNSChange != null)
                     txtAutoDNSChange.Text = LanguageManager.GetText("ui_texts", "auto_dns_change");
-                
+
+                if (txtCheckForUpdates != null)
+                    txtCheckForUpdates.Text = LanguageManager.GetText("ui_texts", "check_for_updates");
+
                 if (txtBrowserTunnelingByeDPI != null)
                     txtBrowserTunnelingByeDPI.Text = LanguageManager.GetText("ui_texts", "browser_tunneling");
                 
@@ -2104,7 +2378,10 @@ namespace SplitWireTurkey
                 
                 if (tooltipAutoDNSChange != null)
                     tooltipAutoDNSChange.Content = LanguageManager.GetText("ui_texts", "tooltip_auto_dns_change");
-                
+
+                if (tooltipCheckForUpdates != null)
+                    tooltipCheckForUpdates.Content = LanguageManager.GetText("ui_texts", "tooltip_check_for_updates");
+
                 if (tooltipRemoveAllServices != null)
                     tooltipRemoveAllServices.Content = LanguageManager.GetText("ui_texts", "tooltip_remove_all_services");
                 
@@ -2574,7 +2851,13 @@ namespace SplitWireTurkey
                     tooltipAutoDNSChange.Background = tooltipBackground;
                     tooltipAutoDNSChange.Foreground = tooltipForeground;
                 }
-                
+
+                if (tooltipCheckForUpdates != null)
+                {
+                    tooltipCheckForUpdates.Background = tooltipBackground;
+                    tooltipCheckForUpdates.Foreground = tooltipForeground;
+                }
+
                 if (tooltipRemoveAllServices != null)
                 {
                     tooltipRemoveAllServices.Background = tooltipBackground;
@@ -2823,8 +3106,8 @@ namespace SplitWireTurkey
 
         private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            // Eğer çıkış butonundan kapatılıyorsa, restart işlemi sırasındaysa, uninstall işlemi sırasındaysa veya single instance reddedildiyse onay isteme
-            if (_isExitingFromButton || _isRestarting || _isUninstalling || _isSingleInstanceReject)
+            // Eğer çıkış butonundan kapatılıyorsa, restart işlemi sırasındaysa, uninstall işlemi sırasındaysa, güncelleme sırasındaysa veya single instance reddedildiyse onay isteme
+            if (_isExitingFromButton || _isRestarting || _isUninstalling || _isUpdating || _isSingleInstanceReject)
             {
                 return; // Direkt kapat
             }
@@ -6385,6 +6668,33 @@ Get-DnsClientDohServerAddress
             SaveAutoDNSChangeToRegistry(false);
         }
 
+        private void LoadCheckForUpdatesFromRegistryAndApply()
+        {
+            try
+            {
+                var isEnabled = LoadCheckForUpdatesFromRegistry();
+                if (chkCheckForUpdates != null)
+                {
+                    chkCheckForUpdates.IsChecked = isEnabled;
+                    Debug.WriteLine($"Check For Updates switch durumu Registry'den yüklendi ve uygulandı: {(isEnabled ? "Aktif" : "Pasif")}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Check For Updates switch durumu yüklenirken hata: {ex.Message}");
+            }
+        }
+
+        private void ChkCheckForUpdates_Checked(object sender, RoutedEventArgs e)
+        {
+            SaveCheckForUpdatesToRegistry(true);
+        }
+
+        private void ChkCheckForUpdates_Unchecked(object sender, RoutedEventArgs e)
+        {
+            SaveCheckForUpdatesToRegistry(false);
+        }
+
         private async void BtnRemoveByeDPI_Click(object sender, RoutedEventArgs e)
         {
             var result = System.Windows.MessageBox.Show(
@@ -6806,6 +7116,17 @@ Get-DnsClientDohServerAddress
             var autoDnsText = new Run(LanguageManager.GetText("advanced_help", "auto_dns_text"));
             paragraph.Inlines.Add(autoDnsTitle);
             paragraph.Inlines.Add(autoDnsText);
+            paragraph.Inlines.Add(new LineBreak());
+            paragraph.Inlines.Add(new LineBreak());
+
+            // Güncellemeleri Otomatik Kontrol Et
+            var updateCheckTitle = new Run(LanguageManager.GetText("advanced_help", "update_check_title"))
+            {
+                FontWeight = FontWeights.Bold
+            };
+            var updateCheckText = new Run(LanguageManager.GetText("advanced_help", "update_check_text"));
+            paragraph.Inlines.Add(updateCheckTitle);
+            paragraph.Inlines.Add(updateCheckText);
             paragraph.Inlines.Add(new LineBreak());
             paragraph.Inlines.Add(new LineBreak());
 
@@ -12782,7 +13103,25 @@ public class GitHubRelease
     
     [JsonPropertyName("tarball_url")]
     public string TarballUrl { get; set; }
-    
+
     [JsonPropertyName("zipball_url")]
     public string ZipballUrl { get; set; }
-} 
+
+    [JsonPropertyName("assets")]
+    public System.Collections.Generic.List<GitHubReleaseAsset> Assets { get; set; }
+}
+
+/// <summary>
+/// GitHub release'ine bağlı indirilebilir dosyayı (installer, zip vb.) temsil eder
+/// </summary>
+public class GitHubReleaseAsset
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; }
+
+    [JsonPropertyName("size")]
+    public long Size { get; set; }
+
+    [JsonPropertyName("browser_download_url")]
+    public string BrowserDownloadUrl { get; set; }
+}
