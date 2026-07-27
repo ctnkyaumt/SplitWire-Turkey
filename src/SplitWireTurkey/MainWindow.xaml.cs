@@ -480,7 +480,7 @@ namespace SplitWireTurkey
         private readonly List<string> _folders;
         
         // Sekme boyut yönetimi için değişkenler
-        private double _byeDPIBaseHeight = 645;
+        private double _byeDPIBaseHeight = 700;
         private double _byeDPIManualParamsHeight = 80;
         private double _byeDPIUseBlacklistHeight = 55;
         private double _discordHeight = 800;
@@ -2155,6 +2155,9 @@ namespace SplitWireTurkey
                 if (btnByeDPIDLLSetup != null)
                     btnByeDPIDLLSetup.Content = LanguageManager.GetText("buttons", "byedpi_dll");
                 
+                if (btnByeDPIProxyTest != null)
+                    btnByeDPIProxyTest.Content = LanguageManager.GetText("buttons", "byedpi_proxytest");
+
                 if (btnRemoveByeDPI != null)
                     btnRemoveByeDPI.Content = LanguageManager.GetText("buttons", "remove_byedpi");
 
@@ -2286,6 +2289,9 @@ namespace SplitWireTurkey
                 
                 if (tooltipByeDPIDLL != null)
                     tooltipByeDPIDLL.Content = LanguageManager.GetText("ui_texts", "tooltip_byedpi_dll");
+
+                if (tooltipByeDPIProxyTest != null)
+                    tooltipByeDPIProxyTest.Content = LanguageManager.GetText("ui_texts", "tooltip_byedpi_proxytest");
                 
                 // Zapret sekmesi tooltip'leri
                 
@@ -2675,6 +2681,12 @@ namespace SplitWireTurkey
                 {
                     tooltipByeDPIDLL.Background = tooltipBackground;
                     tooltipByeDPIDLL.Foreground = tooltipForeground;
+                }
+
+                if (tooltipByeDPIProxyTest != null)
+                {
+                    tooltipByeDPIProxyTest.Background = tooltipBackground;
+                    tooltipByeDPIProxyTest.Foreground = tooltipForeground;
                 }
                 
                 // Zapret sekmesi tooltip'leri
@@ -7710,6 +7722,30 @@ Get-DnsClientDohServerAddress
             }
         }
 
+        /// <summary>
+        /// ByeByeDPI tarzı proxy testi penceresini açar. Seçilen strateji doğrudan
+        /// ByeDPI parametre kutusuna uygulanır.
+        /// </summary>
+        private void BtnByeDPIProxyTest_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var window = new ProxyTestWindow { Owner = this };
+                window.StrategyApplied += command =>
+                {
+                    txtByeDPIParams.Text = command;
+                    chkByeDPIManualParams.IsChecked = true;
+                    SaveActivePresetToRegistry(REG_BYEDPI_PRESET, "Custom");
+                };
+                window.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(ex.Message,
+                    LanguageManager.GetText("messages", "error"), MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         private void ChkByeDPIManualParams_Checked(object sender, RoutedEventArgs e)
         {
             txtByeDPIParams.Visibility = Visibility.Visible;
@@ -8344,7 +8380,7 @@ Get-DnsClientDohServerAddress
                     // Bağlantıyı doğrula ve gerekirse fallback akışını çalıştır
                     if (useAutoSelection)
                     {
-                        var initiallyConnected = await TestConnectionToPastebinAsync();
+                        var initiallyConnected = await TestGoodbyeDPIConnectionsAsync();
                         if (initiallyConnected)
                         {
                             System.Windows.MessageBox.Show(successMsg, 
@@ -9067,6 +9103,22 @@ Get-DnsClientDohServerAddress
             return turkcellConnected;
         }
 
+        /// <summary>
+        /// GoodbyeDPI preset doğrulaması. ByeDPI tarafındaki TestByeDPIConnectionsAsync ile aynı mantık:
+        /// engellenen site açılmalı, engellenmeyen siteler ise preset yüzünden bozulmamalı.
+        /// Aksi halde --set-ttl gibi agresif presetler "çalışıyor" sayılıp normal trafiği kırabilir.
+        /// </summary>
+        private async Task<bool> TestGoodbyeDPIConnectionsAsync()
+        {
+            // pastebin.com gerçekten engelli -> preset onu açabilmeli.
+            if (!await TestConnectionToUrlAsync("https://pastebin.com", "pastebin")) return false;
+
+            // Bu iki site engelli değil -> preset onları bozmamalı.
+            if (!await TestConnectionToUrlAsync("https://www.turkiye.gov.tr/", "e-Devlet")) return false;
+
+            return await TestConnectionToUrlAsync("https://www.turkcell.com.tr/");
+        }
+
         private async Task<bool> IsGoodbyeDPIServiceRunningAsync()
         {
             try
@@ -9172,7 +9224,7 @@ Get-DnsClientDohServerAddress
                     return false;
                 }
 
-                var connected = await TestConnectionToPastebinAsync();
+                var connected = await TestGoodbyeDPIConnectionsAsync();
                 return connected;
             }
             catch (Exception ex)
@@ -9321,7 +9373,7 @@ Get-DnsClientDohServerAddress
 
             if (testInitialConnection)
             {
-                var initiallyConnected = await TestConnectionToPastebinAsync();
+                var initiallyConnected = await TestGoodbyeDPIConnectionsAsync();
                 if (initiallyConnected)
                 {
                     File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Mevcut preset ile bağlantı başarılı.\n");
@@ -9332,22 +9384,22 @@ Get-DnsClientDohServerAddress
             File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Mevcut preset ile bağlantı başarısız veya test edilmedi. Alternatif presetler test ediliyor...\n");
 
             var presetNames = new List<string>();
-            ComboBoxItem currentItem = null;
+            string currentPresetName = null;
             Dispatcher.Invoke(() =>
             {
-                currentItem = cmbGoodbyeDPIPresets.SelectedItem as ComboBoxItem;
+                currentPresetName = (cmbGoodbyeDPIPresets.SelectedItem as ComboBoxItem)?.Content?.ToString();
                 foreach (ComboBoxItem item in cmbGoodbyeDPIPresets.Items)
                 {
                     presetNames.Add(item.Content.ToString());
                 }
             });
 
-            var currentPresetName = currentItem?.Content.ToString() ?? "";
-            
-            var testOrder = new List<string>();
-            for (int i = 0; i < presetNames.Count; i++)
+            // Buraya gelindiyse seçili preset zaten başarısız olmuştur (ya yukarıdaki testte
+            // ya da çağıran tarafta). Onu en sona alıp diğerlerini önce deneriz.
+            var testOrder = presetNames.Where(p => p != currentPresetName).ToList();
+            if (!string.IsNullOrEmpty(currentPresetName) && presetNames.Contains(currentPresetName))
             {
-                testOrder.Add(presetNames[i]);
+                testOrder.Add(currentPresetName);
             }
 
             await StopGoodbyeDPIServiceAndProcesses();

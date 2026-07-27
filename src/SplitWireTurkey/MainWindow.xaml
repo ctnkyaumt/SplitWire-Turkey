@@ -720,8 +720,29 @@
                             </Button.ToolTip>
                         </Button>
                         
-                        <Button x:Name="btnRemoveByeDPI" 
-                                Content="ByeDPI'ı Kaldır" 
+                        <!-- Proxy Testi (ByeByeDPI strateji testi) -->
+                        <Button x:Name="btnByeDPIProxyTest"
+                                Content="Proxy Testi"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Width="300"
+                                Height="40"
+                                FontSize="14"
+                                FontFamily="{StaticResource PoppinsBold}"
+                                Background="Transparent"
+                                Margin="0,0,0,0"
+                                Click="BtnByeDPIProxyTest_Click"
+                                ToolTipService.InitialShowDelay="1000"
+                                ToolTipService.ShowDuration="5000">
+                            <Button.ToolTip>
+                                <ToolTip x:Name="tooltipByeDPIProxyTest"
+                                         FontFamily="Poppins Regular"
+                                         FontSize="12"
+                                         Placement="Mouse"/>
+                            </Button.ToolTip>
+                        </Button>
+
+                        <Button x:Name="btnRemoveByeDPI"
+                                Content="ByeDPI'ı Kaldır"
                                 Width="160"
                                 Height="30"
                                 Margin="0,20,0,0"
