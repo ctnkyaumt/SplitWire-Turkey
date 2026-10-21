@@ -174,9 +174,26 @@ namespace SplitWireTurkey
             {
                 WriteUpdateLog($"Versiyon karşılaştırması: Mevcut={currentVersion}, En son={latestVersion}");
 
-                var current = Version.Parse(currentVersion);
-                var latest = Version.Parse(latestVersion);
-                var isNewer = latest > current;
+                // "2.2.0-rc1" / "2.2.0+build" gibi etiketlerde Version.Parse hata verir;
+                // ön sürüm (-...) ve build (+...) eklerini ayırıp sadece sayısal kısmı karşılaştır
+                static (Version version, bool isPrerelease) ParseVersion(string value)
+                {
+                    var text = (value ?? string.Empty).Trim();
+                    var plusIndex = text.IndexOf('+');
+                    if (plusIndex >= 0)
+                        text = text.Substring(0, plusIndex);
+                    var dashIndex = text.IndexOf('-');
+                    var isPrerelease = dashIndex >= 0;
+                    if (isPrerelease)
+                        text = text.Substring(0, dashIndex);
+                    return (Version.Parse(text), isPrerelease);
+                }
+
+                var (current, currentIsPrerelease) = ParseVersion(currentVersion);
+                var (latest, latestIsPrerelease) = ParseVersion(latestVersion);
+                // Sayısal kısım eşitse: ön sürüm etiketi daha yeni sayılmaz; mevcut ön sürümse kararlı sürüm daha yenidir
+                var isNewer = latest > current ||
+                              (latest == current && currentIsPrerelease && !latestIsPrerelease);
 
                 WriteUpdateLog($"Versiyon karşılaştırma sonucu: {(isNewer ? "Yeni sürüm mevcut" : "Güncel sürüm")}");
 
@@ -533,8 +550,6 @@ namespace SplitWireTurkey
             }
         }
 
-        private readonly List<string> _folders;
-        
         // Sekme boyut yönetimi için değişkenler
         private double _byeDPIBaseHeight = 700;
         private double _byeDPIManualParamsHeight = 80;
@@ -588,8 +603,6 @@ namespace SplitWireTurkey
             {
                 _isSingleInstanceReject = true;
             }
-            
-            _folders = new List<string>();
             
             // Görev çubuğu karanlık mod desteğini kontrol et
             CheckTaskbarDarkModeSupport();
@@ -1354,10 +1367,32 @@ namespace SplitWireTurkey
         private DateTime _lastServiceCheck = DateTime.MinValue;
         private readonly TimeSpan _cacheTimeout = TimeSpan.FromSeconds(2); // 2 saniye cache
 
+        // Cache okumaları da yazmalarla aynı kilit altında yapılır (arka plan thread'i cache'i yazarken)
+        private bool TryGetCachedServiceStatus(string serviceName, out bool isInstalled)
+        {
+            lock (_serviceStatusCache)
+            {
+                return _serviceStatusCache.TryGetValue(serviceName, out isInstalled);
+            }
+        }
+
+        private bool HasCachedServiceStatuses()
+        {
+            lock (_serviceStatusCache)
+            {
+                return _serviceStatusCache.Count > 0;
+            }
+        }
+
         private async void CheckAllServices()
         {
             // Cache süresi dolmamışsa cache'den oku
-            if (DateTime.Now - _lastServiceCheck < _cacheTimeout && _serviceStatusCache.Count > 0)
+            bool cacheIsFresh;
+            lock (_serviceStatusCache)
+            {
+                cacheIsFresh = DateTime.Now - _lastServiceCheck < _cacheTimeout && _serviceStatusCache.Count > 0;
+            }
+            if (cacheIsFresh)
             {
                 UpdateAllServiceUIFromCache();
                 return;
@@ -1442,23 +1477,23 @@ namespace SplitWireTurkey
         private void UpdateAllServiceUIFromCache()
         {
             
-            if (_serviceStatusCache.TryGetValue("ByeDPI", out bool byeDPIInstalled))
+            if (TryGetCachedServiceStatus("ByeDPI", out bool byeDPIInstalled))
                 UpdateServiceUI(byeDPIInstalled, byeDPIStatus, byeDPIStatusText, btnByeDPIRemove);
             
-            if (_serviceStatusCache.TryGetValue("ProxiFyreService", out bool proxiFyreInstalled))
+            if (TryGetCachedServiceStatus("ProxiFyreService", out bool proxiFyreInstalled))
                 UpdateServiceUI(proxiFyreInstalled, proxiFyreStatus, proxiFyreStatusText, btnProxiFyreRemove);
             
-            if (_serviceStatusCache.TryGetValue("winws1", out bool winWS1Installed))
+            if (TryGetCachedServiceStatus("winws1", out bool winWS1Installed))
                 UpdateServiceUI(winWS1Installed, winWS1Status, winWS1StatusText, btnWinWS1Remove);
             
-            if (_serviceStatusCache.TryGetValue("winws2", out bool winWS2Installed))
+            if (TryGetCachedServiceStatus("winws2", out bool winWS2Installed))
                 UpdateServiceUI(winWS2Installed, winWS2Status, winWS2StatusText, btnWinWS2Remove);
             
             
-            if (_serviceStatusCache.TryGetValue("GoodbyeDPI", out bool goodbyeDPIInstalled))
+            if (TryGetCachedServiceStatus("GoodbyeDPI", out bool goodbyeDPIInstalled))
                 UpdateServiceUI(goodbyeDPIInstalled, goodbyeDPIStatus, goodbyeDPIStatusText, btnGoodbyeDPIAdvancedRemove);
             
-            if (_serviceStatusCache.TryGetValue("WinDivert", out bool winDivertInstalled))
+            if (TryGetCachedServiceStatus("WinDivert", out bool winDivertInstalled))
                 UpdateServiceUI(winDivertInstalled, winDivertStatus, winDivertStatusText, btnWinDivertRemove);
         }
 
@@ -1495,7 +1530,16 @@ namespace SplitWireTurkey
                     btnRemoveByeDPI.Visibility = Visibility.Collapsed;
                 }
             }
-            
+
+            // GoodbyeDPI için özel işlem - GoodbyeDPI sayfasındaki kaldır butonunu da gizle
+            if (serviceName == "GoodbyeDPI")
+            {
+                if (btnRemoveGoodbyeDPI != null)
+                {
+                    btnRemoveGoodbyeDPI.Visibility = Visibility.Collapsed;
+                }
+            }
+
             if (statusEllipse != null && statusText != null)
             {
                 statusEllipse.Fill = System.Windows.Media.Brushes.Red;
@@ -1531,7 +1575,7 @@ namespace SplitWireTurkey
                 
                 foreach (var service in servicesToCheck)
                 {
-                    if (_serviceStatusCache.TryGetValue(service, out bool isInstalled) && isInstalled)
+                    if (TryGetCachedServiceStatus(service, out bool isInstalled) && isInstalled)
                     {
                         WriteUpdateLog($"Yüklü hizmet tespit edildi: {service}");
                         return true;
@@ -2217,11 +2261,6 @@ namespace SplitWireTurkey
                 if (btnRemoveByeDPI != null)
                     btnRemoveByeDPI.Content = LanguageManager.GetText("buttons", "remove_byedpi");
 
-                // Zapret butonları
-                
-                
-                
-
                 // GoodbyeDPI butonları
                 if (btnGoodbyeDPISaveBlacklist != null)
                     btnGoodbyeDPISaveBlacklist.Content = LanguageManager.GetText("buttons", "save");
@@ -2326,16 +2365,6 @@ namespace SplitWireTurkey
                 if (txtBrowserTunnelingByeDPI != null)
                     txtBrowserTunnelingByeDPI.Text = LanguageManager.GetText("ui_texts", "browser_tunneling");
                 
-                // WireSock sekmesi tooltip'leri
-                
-                
-                
-                
-                
-                
-                
-                
-                
                 // ByeDPI sekmesi tooltip'leri
                 if (tooltipByeDPISplit != null)
                     tooltipByeDPISplit.Content = LanguageManager.GetText("ui_texts", "tooltip_byedpi_split");
@@ -2348,13 +2377,6 @@ namespace SplitWireTurkey
 
                 if (tooltipByeDPIProxyTest != null)
                     tooltipByeDPIProxyTest.Content = LanguageManager.GetText("ui_texts", "tooltip_byedpi_proxytest");
-                
-                // Zapret sekmesi tooltip'leri
-                
-                
-                
-                
-                
                 
                 // GoodbyeDPI sekmesi tooltip'leri
                 if (tooltipGoodbyeDPIPreset != null)
@@ -2452,11 +2474,6 @@ namespace SplitWireTurkey
                 
                 if (tooltipUninstallSplitWire != null)
                     tooltipUninstallSplitWire.Content = LanguageManager.GetText("ui_texts", "tooltip_uninstall_splitwire");
-                
-                
-
-                // Zapret metinleri
-                
                 
                 if (txtPresetsGoodbyeDPI != null)
                     txtPresetsGoodbyeDPI.Text = LanguageManager.GetText("ui_texts", "presets");
@@ -2710,16 +2727,6 @@ namespace SplitWireTurkey
                     esTooltip.Foreground = tooltipForeground;
                 }
                 
-                // WireSock sekmesi tooltip'leri
-                
-                
-                
-                
-                
-                
-                
-                
-                
                 // ByeDPI sekmesi tooltip'leri
                 if (tooltipByeDPISplit != null)
                 {
@@ -2744,13 +2751,6 @@ namespace SplitWireTurkey
                     tooltipByeDPIProxyTest.Background = tooltipBackground;
                     tooltipByeDPIProxyTest.Foreground = tooltipForeground;
                 }
-                
-                // Zapret sekmesi tooltip'leri
-                
-                
-                
-                
-                
                 
                 // GoodbyeDPI sekmesi tooltip'leri
                 if (tooltipGoodbyeDPIPreset != null)
@@ -3902,108 +3902,6 @@ namespace SplitWireTurkey
             }
         }
 
-        private string GetBestInstallPath()
-        {
-            try
-            {
-                // Mevcut sürücüleri al
-                var drives = DriveInfo.GetDrives();
-                var availableDrives = drives.Where(d => d.IsReady && d.DriveType == DriveType.Fixed).ToList();
-
-                if (!availableDrives.Any())
-                {
-                    System.Windows.MessageBox.Show(LanguageManager.GetText("messages", "no_drives_found"), 
-                        LanguageManager.GetText("messages", "error"), MessageBoxButton.OK, MessageBoxImage.Error);
-                    return @"C:\Program Files\WireSock Secure Connect";
-                }
-
-                // Öncelik sırası: C:, D:, E:, vs.
-                var preferredDrives = new[] { "C:", "D:", "E:", "F:", "G:", "H:", "I:", "J:" };
-                
-                foreach (var driveLetter in preferredDrives)
-                {
-                    var drive = availableDrives.FirstOrDefault(d => 
-                        d.Name.StartsWith(driveLetter, StringComparison.OrdinalIgnoreCase));
-                    
-                    if (drive != null)
-                    {
-                        // Sürücüde yeterli alan var mı kontrol et (en az 100 MB)
-                        if (drive.AvailableFreeSpace < 100 * 1024 * 1024) // 100 MB
-                        {
-                            continue; // Bu sürücüde yeterli alan yok, diğerini dene
-                        }
-
-                        // Program Files klasörünü kontrol et
-                        var programFilesPath = Path.Combine(drive.Name, "Program Files");
-                        var programFilesX86Path = Path.Combine(drive.Name, "Program Files (x86)");
-                        
-                        // Program Files klasörü varsa kullan
-                        if (Directory.Exists(programFilesPath))
-                        {
-                            // Sadece mevcut WireSock Secure Connect kurulumunu kontrol et
-                            var existingSecureConnectPath = Path.Combine(programFilesPath, "WireSock Secure Connect");
-                            
-                            if (Directory.Exists(existingSecureConnectPath))
-                            {
-                                return existingSecureConnectPath;
-                            }
-
-                            // Mevcut kurulum yoksa yeni WireSock Secure Connect klasörünü kullan
-                            var newInstallPath = Path.Combine(programFilesPath, "WireSock Secure Connect");
-                            return newInstallPath;
-                        }
-                        else if (Directory.Exists(programFilesX86Path))
-                        {
-                            // Sadece mevcut WireSock Secure Connect kurulumunu kontrol et
-                            var existingSecureConnectPath = Path.Combine(programFilesX86Path, "WireSock Secure Connect");
-                            
-                            if (Directory.Exists(existingSecureConnectPath))
-                            {
-                                return existingSecureConnectPath;
-                            }
-
-                            // Mevcut kurulum yoksa yeni WireSock Secure Connect klasörünü kullan
-                            var newInstallPath = Path.Combine(programFilesX86Path, "WireSock Secure Connect");
-                            return newInstallPath;
-                        }
-                        else
-                        {
-                            // Program Files klasörü yoksa oluştur
-                            try
-                            {
-                                Directory.CreateDirectory(programFilesPath);
-                                var newInstallPath = Path.Combine(programFilesPath, "WireSock Secure Connect");
-                                return newInstallPath;
-                            }
-                            catch
-                            {
-                                var fallbackInstallPath = Path.Combine(drive.Name, "WireSock Secure Connect");
-                                return fallbackInstallPath;
-                            }
-                        }
-                    }
-                }
-
-                // Tercih edilen sürücüler bulunamadıysa ilk uygun sürücüyü kullan
-                var fallbackDrive = availableDrives.FirstOrDefault();
-                if (fallbackDrive != null)
-                {
-                    var defaultInstallPath = Path.Combine(fallbackDrive.Name, "Program Files", "WireSock Secure Connect");
-                    return defaultInstallPath;
-                }
-
-                System.Windows.MessageBox.Show(LanguageManager.GetText("messages", "no_drives_found_warning"), 
-                    LanguageManager.GetText("messages", "install_location_title"), MessageBoxButton.OK, MessageBoxImage.Warning);
-                return @"C:\Program Files\WireSock Secure Connect";
-            }
-            catch (Exception ex)
-            {
-                System.Windows.MessageBox.Show(LanguageManager.GetText("messages", "drive_detection_error").Replace("{0}", ex.Message), 
-                    LanguageManager.GetText("messages", "error"), MessageBoxButton.OK, MessageBoxImage.Error);
-                return @"C:\Program Files\WireSock Secure Connect";
-            }
-        }
-
         private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             // Dil menüsünü kapat
@@ -4075,7 +3973,7 @@ namespace SplitWireTurkey
                     this.Width = 600;
                 
                 // Cache'den hızlı güncelleme yap
-                if (_serviceStatusCache.Count > 0)
+                if (HasCachedServiceStatuses())
                 {
                     UpdateAllServiceUIFromCache();
                 }
@@ -5040,9 +4938,12 @@ namespace SplitWireTurkey
 
                     // service_install.bat dosyasını sessizce çalıştır
                     File.AppendAllText(logPath, "ByeDPI hizmeti service_install.bat ile kuruluyor...\n");
-                    var cmdArgs = string.IsNullOrEmpty(parameters)
+                    // Parametreler service_install.bat içinde binPath= "\"...ciadpi.exe\" %*" olarak yerleşiyor;
+                    // kullanıcının yazdığı tırnaklar \" olarak kaçırılmazsa binPath bozulur.
+                    var serviceParameters = parameters.Replace("\\\"", "\"").Replace("\"", "\\\"");
+                    var cmdArgs = string.IsNullOrEmpty(serviceParameters)
                         ? $"/c \"\"{serviceInstallPath}\"\""
-                        : $"/c \"\"{serviceInstallPath}\" {parameters}\"";
+                        : $"/c \"\"{serviceInstallPath}\" {serviceParameters}\"";
                     var installResult = ExecuteCommand("cmd", cmdArgs);
                     File.AppendAllText(logPath, $"Hizmet kurulum sonucu (Exit Code): {installResult}\n");
 
@@ -6211,7 +6112,7 @@ $dohResults | ConvertTo-Json
                     var logPath = GetLogPath();
                     File.AppendAllText(logPath, "ByeDPI DLL kurulumu için hizmetler kaldırılıyor...\n");
                     
-                    var services = new[] { "GoodbyeDPI", "WinDivert", "ProxiFyre", "wiresock-client-service", "ByeDPI" };
+                    var services = new[] { "GoodbyeDPI", "WinDivert", "ProxiFyreService", "wiresock-client-service", "ByeDPI" };
                     
                     foreach (var service in services)
                     {
@@ -7453,7 +7354,7 @@ Get-DnsClientDohServerAddress
         {
             if (btnRemoveByeDPI != null)
             {
-                if (_serviceStatusCache.TryGetValue("ByeDPI", out bool isInstalled))
+                if (TryGetCachedServiceStatus("ByeDPI", out bool isInstalled))
                 {
                     btnRemoveByeDPI.Visibility = isInstalled ? Visibility.Visible : Visibility.Collapsed;
                 }
@@ -7469,7 +7370,7 @@ Get-DnsClientDohServerAddress
         {
             if (btnRemoveGoodbyeDPI != null)
             {
-                if (_serviceStatusCache.TryGetValue("GoodbyeDPI", out bool isInstalled))
+                if (TryGetCachedServiceStatus("GoodbyeDPI", out bool isInstalled))
                 {
                     btnRemoveGoodbyeDPI.Visibility = isInstalled ? Visibility.Visible : Visibility.Collapsed;
                 }
@@ -7597,7 +7498,7 @@ Get-DnsClientDohServerAddress
                 "winws1" => winWS1Status,
                 "winws2" => winWS2Status,
                 "WinDivert" => winDivertStatus,
-                "GoodbyeDPI" => null,
+                "GoodbyeDPI" => goodbyeDPIStatus,
                 _ => null
             };
         }
@@ -7611,7 +7512,7 @@ Get-DnsClientDohServerAddress
                 "winws1" => winWS1StatusText,
                 "winws2" => winWS2StatusText,
                 "WinDivert" => winDivertStatusText,
-                "GoodbyeDPI" => null,
+                "GoodbyeDPI" => goodbyeDPIStatusText,
                 _ => null
             };
         }
@@ -7625,7 +7526,7 @@ Get-DnsClientDohServerAddress
                 "winws1" => btnWinWS1Remove,
                 "winws2" => btnWinWS2Remove,
                 "WinDivert" => btnWinDivertRemove,
-                "GoodbyeDPI" => btnRemoveGoodbyeDPI,
+                "GoodbyeDPI" => btnGoodbyeDPIAdvancedRemove, // Gelişmiş sayfa butonu (durum satırı)
                 _ => null
             };
         }
@@ -9507,8 +9408,12 @@ Get-DnsClientDohServerAddress
                     File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Template dosyası okunuyor...\n");
                 
                 var templateContent = await File.ReadAllTextAsync(serviceTemplatePath);
-                var modifiedContent = templateContent.Replace("*parameters*", parameters);
-                
+                // Parametreler sc create binPath= "\"...goodbyedpi.exe\" *parameters*" içine yerleşiyor;
+                // içteki tırnaklar (ör. --blacklist "C:\Users\Ad Soyad\...") \" olarak kaçırılmazsa
+                // binPath bozulur. Önceden kaçırılmış tırnaklar çift kaçırılmasın diye önce normalize edilir.
+                var serviceParameters = (parameters ?? string.Empty).Replace("\\\"", "\"").Replace("\"", "\\\"");
+                var modifiedContent = templateContent.Replace("*parameters*", serviceParameters);
+
                 if (logPath != null)
                 {
                     File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Template içeriği:\n{templateContent}\n");
@@ -9886,11 +9791,10 @@ Get-DnsClientDohServerAddress
                 // Yardım butonları stilini karanlık moda güncelle
                 var btnHelpMainPage = this.FindName("btnHelpMainPage") as System.Windows.Controls.Button;
                 var btnHelpByeDPI = this.FindName("btnHelpByeDPI") as System.Windows.Controls.Button;
-                var btnHelpZapret = this.FindName("btnHelpZapret") as System.Windows.Controls.Button;
                 var btnHelpGoodbyeDPI = this.FindName("btnHelpGoodbyeDPI") as System.Windows.Controls.Button;
                 var btnHelpDiscord = this.FindName("btnHelpDiscord") as System.Windows.Controls.Button;
                 var btnHelpAdvanced = this.FindName("btnHelpAdvanced") as System.Windows.Controls.Button;
-                
+
                 // Stil referansını farklı yollarla deneyelim
                 var darkStyle = System.Windows.Application.Current.Resources["InfoButtonStyleDark"] as Style;
                 if (darkStyle == null)
@@ -9913,11 +9817,6 @@ Get-DnsClientDohServerAddress
                     {
                         btnHelpByeDPI.Style = darkStyle;
                         Debug.WriteLine("btnHelpByeDPI karanlık mod stili uygulandı");
-                    }
-                    if (btnHelpZapret != null) 
-                    {
-                        btnHelpZapret.Style = darkStyle;
-                        Debug.WriteLine("btnHelpZapret karanlık mod stili uygulandı");
                     }
                     if (btnHelpGoodbyeDPI != null) 
                     {
@@ -9948,11 +9847,6 @@ Get-DnsClientDohServerAddress
                     {
                         AnimateBackgroundColor(btnHelpByeDPI, infoButtonColor, animationDuration);
                         AnimateForegroundColor(btnHelpByeDPI, Colors.White, animationDuration);
-                    }
-                    if (btnHelpZapret != null) 
-                    {
-                        AnimateBackgroundColor(btnHelpZapret, infoButtonColor, animationDuration);
-                        AnimateForegroundColor(btnHelpZapret, Colors.White, animationDuration);
                     }
                     if (btnHelpGoodbyeDPI != null) 
                     {
@@ -10073,7 +9967,6 @@ Get-DnsClientDohServerAddress
                 // Yardım butonları stilini aydınlık moda güncelle
                 var btnHelpMainPage = this.FindName("btnHelpMainPage") as System.Windows.Controls.Button;
                 var btnHelpByeDPI = this.FindName("btnHelpByeDPI") as System.Windows.Controls.Button;
-                var btnHelpZapret = this.FindName("btnHelpZapret") as System.Windows.Controls.Button;
                 var btnHelpGoodbyeDPI = this.FindName("btnHelpGoodbyeDPI") as System.Windows.Controls.Button;
                 var btnHelpDiscord = this.FindName("btnHelpDiscord") as System.Windows.Controls.Button;
                 var btnHelpAdvanced = this.FindName("btnHelpAdvanced") as System.Windows.Controls.Button;
@@ -10100,11 +9993,6 @@ Get-DnsClientDohServerAddress
                     {
                         btnHelpByeDPI.Style = lightStyle;
                         Debug.WriteLine("btnHelpByeDPI aydınlık mod stili uygulandı");
-                    }
-                    if (btnHelpZapret != null) 
-                    {
-                        btnHelpZapret.Style = lightStyle;
-                        Debug.WriteLine("btnHelpZapret aydınlık mod stili uygulandı");
                     }
                     if (btnHelpGoodbyeDPI != null) 
                     {
@@ -10135,11 +10023,6 @@ Get-DnsClientDohServerAddress
                     {
                         AnimateBackgroundColor(btnHelpByeDPI, defaultInfoColor, animationDuration);
                         AnimateForegroundColor(btnHelpByeDPI, defaultInfoTextColor, animationDuration);
-                    }
-                    if (btnHelpZapret != null) 
-                    {
-                        AnimateBackgroundColor(btnHelpZapret, defaultInfoColor, animationDuration);
-                        AnimateForegroundColor(btnHelpZapret, defaultInfoTextColor, animationDuration);
                     }
                     if (btnHelpGoodbyeDPI != null) 
                     {
@@ -10387,7 +10270,7 @@ Get-DnsClientDohServerAddress
             return string.Join(" ", browsers);
         }
 
-        // WireSock kısayol silme yardımcı metodu
+        // Toggle switch stillerini temaya göre günceller
         private void UpdateToggleSwitchStyles(bool isDarkMode)
         {
             try
@@ -10854,82 +10737,6 @@ Get-DnsClientDohServerAddress
                 await RemoveFirewallRulesAsync();
                 File.AppendAllText(logPath, "2.5. Windows Firewall kuralları kaldırıldı.\n");
 
-
-                // 4. WireSock'un her iki sürümünü de sessiz kaldır
-                File.AppendAllText(logPath, "4. WireSock'un her iki sürümü sessiz kaldırılıyor...\n");
-                
-                // 4.1. WireSock 2.4.23.1 sürümünü sessiz kaldır (Standart Kurulum)
-                try
-                {
-                    var wiresockUninstallPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "res", "wiresock-secure-connect-x64-2.4.23.1.exe");
-                    if (File.Exists(wiresockUninstallPath))
-                    {
-                        File.AppendAllText(logPath, "4.1. WireSock 2.4.23.1 sürümü kaldırılıyor...\n");
-                        var uninstallProcess = new Process
-                        {
-                            StartInfo = new ProcessStartInfo
-                            {
-                                FileName = wiresockUninstallPath,
-                                Arguments = "/uninstall /S",
-                                UseShellExecute = false,
-                                CreateNoWindow = true,
-                                RedirectStandardOutput = true,
-                                RedirectStandardError = true,
-                                Verb = "runas"
-                            }
-                        };
-
-                        uninstallProcess.Start();
-                        await uninstallProcess.WaitForExitAsync();
-                        File.AppendAllText(logPath, $"4.1. WireSock 2.4.23.1 kaldırma tamamlandı. Exit Code: {uninstallProcess.ExitCode}\n");
-                    }
-                    else
-                    {
-                        File.AppendAllText(logPath, "4.1. WireSock 2.4.23.1 kaldırma dosyası bulunamadı.\n");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    File.AppendAllText(logPath, $"4.1. WireSock 2.4.23.1 kaldırma hatası: {ex.Message}\n");
-                    // Hata olsa bile devam et
-                }
-
-                // 4.2. WireSock 1.4.7.1 sürümünü sessiz kaldır (Alternatif Kurulum)
-                try
-                {
-                    var wiresockLegacyUninstallPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "res", "wiresock-vpn-client-x64-1.4.7.1.msi");
-                    if (File.Exists(wiresockLegacyUninstallPath))
-                    {
-                        File.AppendAllText(logPath, "4.2. WireSock 1.4.7.1 sürümü kaldırılıyor...\n");
-                        var uninstallProcess = new Process
-                        {
-                            StartInfo = new ProcessStartInfo
-                            {
-                                FileName = "msiexec",
-                                Arguments = $"/x \"{wiresockLegacyUninstallPath}\" /qn",
-                                UseShellExecute = false,
-                                CreateNoWindow = true,
-                                RedirectStandardOutput = true,
-                                RedirectStandardError = true,
-                                Verb = "runas"
-                            }
-                        };
-
-                        uninstallProcess.Start();
-                        await uninstallProcess.WaitForExitAsync();
-                        File.AppendAllText(logPath, $"4.2. WireSock 1.4.7.1 kaldırma tamamlandı. Exit Code: {uninstallProcess.ExitCode}\n");
-                    }
-                    else
-                    {
-                        File.AppendAllText(logPath, "4.2. WireSock 1.4.7.1 kaldırma dosyası bulunamadı.\n");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    File.AppendAllText(logPath, $"4.2. WireSock 1.4.7.1 kaldırma hatası: {ex.Message}\n");
-                    // Hata olsa bile devam et
-                }
-
                 // 4.3. WebCord süreçlerini sonlandır ve masaüstü kısayolunu kaldır
                 try
                 {
@@ -11038,7 +10845,7 @@ Get-DnsClientDohServerAddress
             }
         }
 
-        // WireSock kaldırma yardımcı metodu
+        // Kaldırma log dosyası yolu yardımcı metodu
         private string GetUninstallLogPath()
         {
             var logsDirectory = GetAppDataLogsDirectory();
