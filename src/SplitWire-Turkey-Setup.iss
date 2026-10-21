@@ -23,7 +23,7 @@ turkish.AdditionalIcons=Ek simgeler:
 turkish.CreateDesktopShortcut=Masaüstünde kısayol oluştur
 turkish.CreateQuickLaunchShortcut=Hızlı başlat çubuğunda kısayol oluştur
 turkish.LaunchAfterInstall=Kurulum tamamlandıktan sonra SplitWire-Turkey'i çalıştır
-turkish.InstallingDotNet=.NET 8.0 Runtime kuruluyor...
+turkish.InstallingDotNet=.NET 10.0 Runtime kuruluyor...
 turkish.UninstallProgress=Kaldırma işlemi devam ediyor...
 
 ; İngilizce mesajlar
@@ -34,7 +34,7 @@ english.AdditionalIcons=Additional icons:
 english.CreateDesktopShortcut=Create a desktop shortcut
 english.CreateQuickLaunchShortcut=Create a quick launch shortcut
 english.LaunchAfterInstall=Launch SplitWire-Turkey after installation
-english.InstallingDotNet=Installing .NET 8.0 Runtime...
+english.InstallingDotNet=Installing .NET 10.0 Runtime...
 english.UninstallProgress=Uninstall in progress...
 
 ; Rusça mesajlar
@@ -45,7 +45,7 @@ russian.AdditionalIcons=Дополнительные значки:
 russian.CreateDesktopShortcut=Создать ярлык на рабочем столе
 russian.CreateQuickLaunchShortcut=Создать ярлык в панели быстрого запуска
 russian.LaunchAfterInstall=Запустить SplitWire-Turkey после установки
-russian.InstallingDotNet=Установка .NET 8.0 Runtime...
+russian.InstallingDotNet=Установка .NET 10.0 Runtime...
 russian.UninstallProgress=Удаление выполняется...
 
 ; İspanyolca mesajlar
@@ -56,7 +56,7 @@ spanish.AdditionalIcons=Iconos adicionales:
 spanish.CreateDesktopShortcut=Crear un acceso directo en el escritorio
 spanish.CreateQuickLaunchShortcut=Crear un acceso directo en la barra de inicio rápido
 spanish.LaunchAfterInstall=Ejecutar SplitWire-Turkey después de la instalación
-spanish.InstallingDotNet=Instalando .NET 8.0 Runtime...
+spanish.InstallingDotNet=Instalando .NET 10.0 Runtime...
 spanish.UninstallProgress=Desinstalación en progreso...
 
 
@@ -106,10 +106,14 @@ Source: "MaterialDesignColors.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Microsoft.Xaml.Behaviors.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "res\*"; DestDir: "{app}\res"; Flags: ignoreversion recursesubdirs
 Source: "Prerequisites\VC_redist.x64.exe"; DestDir: "{app}\Prerequisites"; Flags: ignoreversion
-Source: "Prerequisites\Windows.Packet.Filter.3.6.1.1.x64.msi"; DestDir: "{app}\Prerequisites"; Flags: ignoreversion
+Source: "Prerequisites\Windows.Packet.Filter.3.6.2.1.x64.msi"; DestDir: "{app}\Prerequisites"; Flags: ignoreversion
 ; .NET Framework Runtime Installers
-Source: "Prerequisites\.NET 8.0\windowsdesktop-runtime-8.0.22-win-x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Check: Is64BitInstallMode
-Source: "Prerequisites\.NET 8.0\windowsdesktop-runtime-8.0.22-win-x86.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Check: not Is64BitInstallMode
+Source: "Prerequisites\.NET 10.0\windowsdesktop-runtime-10.0.13-win-x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Check: Is64BitInstallMode
+Source: "Prerequisites\.NET 10.0\windowsdesktop-runtime-10.0.13-win-x86.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Check: not Is64BitInstallMode
+
+[InstallDelete]
+; Remove stale Windows Packet Filter MSI from previous versions
+Type: files; Name: "{app}\Prerequisites\Windows.Packet.Filter.3.6.1.1.x64.msi"
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -123,9 +127,9 @@ Root: HKCU; Subkey: "SOFTWARE\SplitWire-Turkey"; ValueType: string; ValueName: "
 Root: HKCU; Subkey: "SOFTWARE\SplitWire-Turkey"; ValueType: string; ValueName: "Language"; ValueData: "{code:GetLanguageCode}"; Flags: uninsdeletekey
 
 [Run]
-; Install .NET 8.0 Runtime if not present
-Filename: "{tmp}\windowsdesktop-runtime-8.0.22-win-x64.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "{cm:InstallingDotNet}"; Flags: runhidden; Check: Is64BitInstallMode and not IsDotNetDetected
-Filename: "{tmp}\windowsdesktop-runtime-8.0.22-win-x86.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "{cm:InstallingDotNet}"; Flags: runhidden; Check: not Is64BitInstallMode and not IsDotNetDetected
+; Install .NET 10.0 Runtime if not present
+Filename: "{tmp}\windowsdesktop-runtime-10.0.13-win-x64.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "{cm:InstallingDotNet}"; Flags: runhidden; Check: Is64BitInstallMode and not IsDotNetDetected
+Filename: "{tmp}\windowsdesktop-runtime-10.0.13-win-x86.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "{cm:InstallingDotNet}"; Flags: runhidden; Check: not Is64BitInstallMode and not IsDotNetDetected
 ; Launch application after installation (with admin privileges)
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchAfterInstall}"; Flags: nowait postinstall skipifsilent runascurrentuser
 
@@ -133,6 +137,9 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchAfterInstall}"; Flags
 // Global değişkenler
 var
   UninstallLanguage: String;
+  // Güncelleme sırasında durdurulan ve kurulum sonrası yeniden başlatılacak hizmetler
+  ProxiFyreWasRunning: Boolean;
+  ByeDPIWasRunning: Boolean;
 
 // Forward declarations
 function IsServiceInstalled(ServiceName: String): Boolean; forward;
@@ -150,7 +157,7 @@ var
 begin
   Result := False;
   
-  // Check for .NET 8.0 Desktop Runtime by enumerating uninstall keys
+  // Check for .NET 10.0 Desktop Runtime by enumerating uninstall keys
   Key := 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall';
   
   // Check in 64-bit registry
@@ -160,13 +167,13 @@ begin
     begin
       if RegQueryStringValue(HKLM, Key + '\' + SubKeyNames[I], 'DisplayName', DisplayName) then
       begin
-        // Check if it's .NET 8.0 Desktop Runtime
-        if (Pos('Microsoft Windows Desktop Runtime - 8.0', DisplayName) > 0) or
-           (Pos('Microsoft Windows Desktop Runtime 8.0', DisplayName) > 0) then
+        // Check if it's .NET 10.0 Desktop Runtime
+        if (Pos('Microsoft Windows Desktop Runtime - 10.0', DisplayName) > 0) or
+           (Pos('Microsoft Windows Desktop Runtime 10.0', DisplayName) > 0) then
         begin
           if RegQueryStringValue(HKLM, Key + '\' + SubKeyNames[I], 'DisplayVersion', Version) then
           begin
-            if Pos('8.0', Version) = 1 then
+            if Pos('10.', Version) = 1 then
             begin
               Result := True;
               Exit;
@@ -187,12 +194,12 @@ begin
       begin
         if RegQueryStringValue(HKLM, Key + '\' + SubKeyNames[I], 'DisplayName', DisplayName) then
         begin
-          if (Pos('Microsoft Windows Desktop Runtime - 8.0', DisplayName) > 0) or
-             (Pos('Microsoft Windows Desktop Runtime 8.0', DisplayName) > 0) then
+          if (Pos('Microsoft Windows Desktop Runtime - 10.0', DisplayName) > 0) or
+             (Pos('Microsoft Windows Desktop Runtime 10.0', DisplayName) > 0) then
           begin
             if RegQueryStringValue(HKLM, Key + '\' + SubKeyNames[I], 'DisplayVersion', Version) then
             begin
-              if Pos('8.0', Version) = 1 then
+              if Pos('10.', Version) = 1 then
               begin
                 Result := True;
                 Exit;
@@ -209,11 +216,11 @@ function InitializeSetup(): Boolean;
 begin
   Result := True;
   
-  // Check if .NET 8.0 is installed
+  // Check if .NET 10.0 is installed
   if not IsDotNetDetected then
   begin
-    // MsgBox('.NET 8.0 Desktop Runtime, SplitWire-Turkey için gereklidir.' + #13#10 + 
-          // 'Kurulum programı şimdi .NET 8.0 Desktop Runtime''ı otomatik olarak kuracaktır.', 
+    // MsgBox('.NET 10.0 Desktop Runtime, SplitWire-Turkey için gereklidir.' + #13#10 + 
+          // 'Kurulum programı şimdi .NET 10.0 Desktop Runtime''ı otomatik olarak kuracaktır.', 
           // mbInformation, MB_OK);
   end;
 end;
@@ -263,6 +270,108 @@ begin
   Result := RegQueryStringValue(HKCU, 'SOFTWARE\SplitWire-Turkey', 'InstallPath', ExistingInstallPath);
 end;
 
+// 'sc query' çıktısında istenen durum satırı var mı? (STATE : 4  RUNNING / STATE : 1  STOPPED)
+// Durum kodu da kontrol edilir, böylece yerelleştirilmiş çıktıda da çalışır.
+function ServiceHasState(ServiceName, StateCode, StateName: String): Boolean;
+var
+  ResultCode: Integer;
+begin
+  Result := False;
+  try
+    if Exec(ExpandConstant('{cmd}'), '/C sc query ' + ServiceName + ' | findstr /C:": ' + StateCode + '  " /C:"' + StateName + '" >nul', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    begin
+      Result := (ResultCode = 0);
+    end;
+  except
+    Result := False;
+  end;
+end;
+
+// Hizmet çalışıyorsa durdurur ve durmasını bekler. Hizmet çalışıyorsa True döndürür
+// (kurulum sonrası yeniden başlatmak için). Hizmeti silmez veya yeniden yapılandırmaz.
+function StopServiceForUpgrade(ServiceName: String): Boolean;
+var
+  ResultCode: Integer;
+  I: Integer;
+begin
+  Result := False;
+  try
+    if not ServiceHasState(ServiceName, '4', 'RUNNING') then
+    begin
+      Log(ServiceName + ' hizmeti çalışmıyor, durdurma gerekmiyor');
+      Exit;
+    end;
+
+    Result := True;
+    Log(ServiceName + ' hizmeti çalışıyor, güncelleme için durduruluyor...');
+    if Exec('sc', 'stop ' + ServiceName, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    begin
+      Log(ServiceName + ' için sc stop komutu çalıştırıldı (kod: ' + IntToStr(ResultCode) + ')');
+    end
+    else
+    begin
+      Log('Uyarı: ' + ServiceName + ' için sc stop komutu çalıştırılamadı');
+    end;
+
+    // En fazla 15 saniye bekle (30 x 500 ms)
+    for I := 1 to 30 do
+    begin
+      if ServiceHasState(ServiceName, '1', 'STOPPED') then
+      begin
+        // Dosya tutamaçlarının serbest kalması için kısa bir ek bekleme
+        Sleep(500);
+        Log(ServiceName + ' hizmeti durduruldu');
+        Exit;
+      end;
+      Sleep(500);
+    end;
+    Log('Uyarı: ' + ServiceName + ' hizmeti zaman aşımı süresi içinde durmadı, kurulum devam ediyor');
+  except
+    Log('HATA: ' + ServiceName + ' hizmeti durdurulurken exception oluştu, kurulum devam ediyor');
+  end;
+end;
+
+procedure StartServiceAfterUpgrade(ServiceName: String);
+var
+  ResultCode: Integer;
+begin
+  try
+    Log(ServiceName + ' hizmeti yeniden başlatılıyor...');
+    if Exec('sc', 'start ' + ServiceName, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    begin
+      Log(ServiceName + ' için sc start komutu çalıştırıldı (kod: ' + IntToStr(ResultCode) + ')');
+    end
+    else
+    begin
+      Log('Uyarı: ' + ServiceName + ' için sc start komutu çalıştırılamadı');
+    end;
+  except
+    Log('HATA: ' + ServiceName + ' hizmeti başlatılırken exception oluştu');
+  end;
+end;
+
+// Güncellemede, {app}\res altındaki dosyaları kullanan hizmetleri dosyalar kopyalanmadan önce durdur.
+// ProxiFyreService: {app}\res\proxifyre\ProxiFyre.exe, ByeDPI: {app}\res\byedpi\ciadpi.exe.
+// GoodbyeDPI/WinDivert dosyaları %LOCALAPPDATA%\SplitWire-Turkey\GoodbyeDPI altında çalışır,
+// {app} altında olmadığı için burada ele alınmaz.
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := '';
+  ProxiFyreWasRunning := False;
+  ByeDPIWasRunning := False;
+  try
+    if IsUpgradeInstall() then
+    begin
+      Log('=== Güncelleme: {app}\res altındaki hizmetler durduruluyor ===');
+      ProxiFyreWasRunning := StopServiceForUpgrade('ProxiFyreService');
+      ByeDPIWasRunning := StopServiceForUpgrade('ByeDPI');
+      Log('=== Güncelleme: hizmet durdurma işlemi tamamlandı ===');
+    end;
+  except
+    Log('HATA: Güncelleme öncesi hizmet durdurma sırasında exception oluştu, kurulum devam ediyor');
+  end;
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   LocalAppDataPath: String;
@@ -307,6 +416,19 @@ begin
       end;
 
       Log('=== Kurulum öncesi temizlik işlemi tamamlandı ===');
+    end;
+  end;
+
+  if CurStep = ssPostInstall then
+  begin
+    // Güncelleme öncesi çalışıyor olan hizmetleri yeni dosyalarla yeniden başlat
+    if ProxiFyreWasRunning then
+    begin
+      StartServiceAfterUpgrade('ProxiFyreService');
+    end;
+    if ByeDPIWasRunning then
+    begin
+      StartServiceAfterUpgrade('ByeDPI');
     end;
   end;
 end;

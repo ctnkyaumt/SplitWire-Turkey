@@ -302,7 +302,7 @@ Bu buton, tüm temizlik işlemlerini gerçekleştirip unins000.exe isimli kaldı
 
 ### C# Kullanarak Programı Tekrar Derleme
 Gereksinimler:
-- **.NET 8.0 SDK** veya üzeri
+- **.NET 10.0 SDK** veya üzeri
 - **Visual Studio 2022** veya **Visual Studio Code**
 - **Windows 10/11** işletim sistemi
 
@@ -338,7 +338,7 @@ Gereksinimler:
 
 1. **C# Programını Derleyin ve Çıktı SplitWire-Turkey.exe'nin Bulunduğu Klasörde Gidin**
 
-2. **Prerequisites Klasörü ile Resources Klasörü ve İçeriklerini Bulunduğunuz Klasöre Kopyalayın** (Desktop Runtime Dosyalarının Prerequisites klasörüne yüklenmesi mümkün değil, çünkü dosya boyut sınırını aşıyor. Bunun yerine manuel olarak windowsdesktop-runtime-6.0.35-win-x64.exe ve windowsdesktop-runtime-6.0.35-win-x86.exe dosyalarını bu klasöre siz yerleştirmelisiniz.)
+2. **Prerequisites Klasörü ile Resources Klasörü ve İçeriklerini Bulunduğunuz Klasöre Kopyalayın** (Desktop Runtime Dosyalarının Prerequisites klasörüne yüklenmesi mümkün değil, çünkü dosya boyut sınırını aşıyor. Bunun yerine manuel olarak windowsdesktop-runtime-10.0.13-win-x64.exe ve windowsdesktop-runtime-10.0.13-win-x86.exe dosyalarını bu klasöre siz yerleştirmelisiniz.)
 
 3. **Bulunduğunuz Klasörde Bir Komut Satırı Açıp Kurulum Yürütülebilirini Derleyin**
    ```bash

@@ -301,7 +301,7 @@ This button performs all cleanup operations and runs the unins000.exe removal pa
 
 ### Recompiling the Program Using C#
 Requirements:
-- **.NET 8.0 SDK** or higher
+- **.NET 10.0 SDK** or higher
 - **Visual Studio 2022** or **Visual Studio Code**
 - **Windows 10/11** operating system
 
@@ -337,7 +337,7 @@ Requirements:
 
 1. **Compile C# Program and Go to the Folder Where Output SplitWire-Turkey.exe is Located**
 
-2. **Copy Prerequisites Folder and Resources Folder and Their Contents to Your Current Folder** (It is not possible to upload Desktop Runtime files to the Prerequisites folder because it exceeds the file size limit. Instead, you must manually place windowsdesktop-runtime-6.0.35-win-x64.exe and windowsdesktop-runtime-6.0.35-win-x86.exe files in this folder.)
+2. **Copy Prerequisites Folder and Resources Folder and Their Contents to Your Current Folder** (It is not possible to upload Desktop Runtime files to the Prerequisites folder because it exceeds the file size limit. Instead, you must manually place windowsdesktop-runtime-10.0.13-win-x64.exe and windowsdesktop-runtime-10.0.13-win-x86.exe files in this folder.)
 
 3. **Open a Command Line in Your Current Folder and Compile the Installation Executable**
    ```bash

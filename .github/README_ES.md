@@ -301,7 +301,7 @@ Este botón realiza todas las operaciones de limpieza y ejecuta el paquete de el
 
 ### Recompilar el Programa Usando C#
 Requisitos:
-- **.NET 8.0 SDK** o superior
+- **.NET 10.0 SDK** o superior
 - **Visual Studio 2022** o **Visual Studio Code**
 - Sistema operativo **Windows 10/11**
 
@@ -337,7 +337,7 @@ Requisitos:
 
 1. **Compilar el Programa C# e Ir a la Carpeta Donde se Encuentra el SplitWire-Turkey.exe de Salida**
 
-2. **Copiar la Carpeta Prerequisites y la Carpeta Resources y Su Contenido a Su Carpeta Actual** (No es posible cargar los archivos Desktop Runtime a la carpeta Prerequisites porque excede el límite de tamaño de archivo. En su lugar, debe colocar manualmente los archivos windowsdesktop-runtime-6.0.35-win-x64.exe y windowsdesktop-runtime-6.0.35-win-x86.exe en esta carpeta.)
+2. **Copiar la Carpeta Prerequisites y la Carpeta Resources y Su Contenido a Su Carpeta Actual** (No es posible cargar los archivos Desktop Runtime a la carpeta Prerequisites porque excede el límite de tamaño de archivo. En su lugar, debe colocar manualmente los archivos windowsdesktop-runtime-10.0.13-win-x64.exe y windowsdesktop-runtime-10.0.13-win-x86.exe en esta carpeta.)
 
 3. **Abrir una Línea de Comando en Su Carpeta Actual y Compilar el Ejecutable de Instalación**
    ```bash

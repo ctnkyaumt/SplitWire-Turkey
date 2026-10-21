@@ -335,19 +335,63 @@ namespace SplitWireTurkey
         }
 
         /// <summary>
+        /// İndirilen güncelleme dosyasının SHA-256 özetini GitHub'ın bildirdiği "sha256:..." digest
+        /// değeriyle karşılaştırır. Eşleşmezse dosyayı siler ve hata fırlatır.
+        /// </summary>
+        private void VerifyUpdateInstallerDigest(string filePath, string expectedDigest)
+        {
+            const string sha256Prefix = "sha256:";
+            if (string.IsNullOrWhiteSpace(expectedDigest) ||
+                !expectedDigest.StartsWith(sha256Prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new Exception($"Desteklenmeyen güncelleme dosyası özeti: {expectedDigest}");
+            }
+
+            var expectedHash = expectedDigest.Substring(sha256Prefix.Length).Trim();
+
+            string actualHash;
+            using (var stream = File.OpenRead(filePath))
+            using (var sha256 = System.Security.Cryptography.SHA256.Create())
+            {
+                actualHash = Convert.ToHexString(sha256.ComputeHash(stream));
+            }
+
+            if (!string.Equals(actualHash, expectedHash, StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    File.Delete(filePath);
+                }
+                catch (Exception deleteEx)
+                {
+                    WriteUpdateLog($"Doğrulanamayan güncelleme dosyası silinemedi: {deleteEx.Message}");
+                }
+
+                throw new Exception($"İndirilen güncelleme dosyasının SHA-256 özeti eşleşmiyor (beklenen: {expectedHash}, hesaplanan: {actualHash}).");
+            }
+
+            WriteUpdateLog($"Güncelleme dosyasının SHA-256 özeti doğrulandı: {actualHash}");
+        }
+
+        /// <summary>
         /// Güncelleyici scripti başlatır ve uygulamayı kapatır. Script; bu uygulamanın kapanmasını
         /// bekler, kurulumu sessizce (mevcut ayarları/hizmetleri koruyarak) çalıştırır, uygulamayı
         /// yeniden başlatır ve geçici güncelleme dosyalarını temizler.
         /// </summary>
         private void LaunchUpdaterAndExit(string installerPath)
         {
-            var updaterBatPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "res", "update_installer.bat");
+            var bundledUpdaterBatPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "res", "update_installer.bat");
             var appExePath = Process.GetCurrentProcess().MainModule.FileName;
 
-            if (!File.Exists(updaterBatPath))
+            if (!File.Exists(bundledUpdaterBatPath))
             {
-                throw new FileNotFoundException("Güncelleyici script bulunamadı", updaterBatPath);
+                throw new FileNotFoundException("Güncelleyici script bulunamadı", bundledUpdaterBatPath);
             }
+
+            // Script kendini sildiği ve kurulum sırasında üzerine yazılacağı için kurulum klasöründen
+            // değil, indirilen kurulum dosyasıyla aynı geçici klasöre kopyalanıp oradan çalıştırılır.
+            var updaterBatPath = Path.Combine(Path.GetDirectoryName(installerPath), "update_installer.bat");
+            File.Copy(bundledUpdaterBatPath, updaterBatPath, true);
 
             WriteUpdateLog($"Güncelleyici script başlatılıyor: {updaterBatPath}");
 
@@ -387,6 +431,12 @@ namespace SplitWireTurkey
                 // Bu uygulamanın kullanıcı kitlesi kısıtlı/filtrelenmiş ağlarda olabileceğinden
                 // indirme birkaç kez denenir (artan bekleme ile).
                 const int maxDownloadAttempts = 3;
+                var hasDigest = !string.IsNullOrWhiteSpace(asset.Digest);
+                if (!hasDigest)
+                {
+                    WriteUpdateLog("Bu sürümün kurulum dosyası için GitHub digest (SHA-256) bilgisi yok, bütünlük doğrulaması atlanıyor");
+                }
+
                 Exception lastDownloadError = null;
                 for (int attempt = 1; attempt <= maxDownloadAttempts; attempt++)
                 {
@@ -396,6 +446,12 @@ namespace SplitWireTurkey
                         {
                             Dispatcher.Invoke(() => ShowUpdateProgress($"{downloadingText} %{percent}", percent, false));
                         });
+                        // Özet eşleşmezse dosya silinir ve hata fırlatılır; yeniden deneme dosyayı baştan indirir
+                        // ve yine doğrular, böylece doğrulanmamış bir dosya asla kurulmaz.
+                        if (hasDigest)
+                        {
+                            VerifyUpdateInstallerDigest(installerPath, asset.Digest);
+                        }
                         lastDownloadError = null;
                         break;
                     }
@@ -3057,23 +3113,8 @@ namespace SplitWireTurkey
         {
             try
             {
-                var discordPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Discord");
-                bool droverExists = false;
-
                 // Discord app-* klasörlerinde version.dll dosyasını ara
-                if (Directory.Exists(discordPath))
-                {
-                    var appFolders = Directory.GetDirectories(discordPath, "app-*");
-                    foreach (var appFolder in appFolders)
-                    {
-                        var versionDllPath = Path.Combine(appFolder, "version.dll");
-                        if (File.Exists(versionDllPath))
-                        {
-                            droverExists = true;
-                            break;
-                        }
-                    }
-                }
+                bool droverExists = GetDiscordAppDirectories().Any(HasDroverFiles);
 
                 await Dispatcher.InvokeAsync(() =>
                 {
@@ -4568,28 +4609,17 @@ namespace SplitWireTurkey
                     var logPath = GetLogPath();
                     var prerequisitesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Prerequisites");
                     
-                    // Windows Packet Filter kurulumu
-                    var packetFilterPath = Path.Combine(prerequisitesPath, "Windows.Packet.Filter.3.6.1.1.x64.msi");
-                    if (File.Exists(packetFilterPath))
+                    // Windows Packet Filter kurulumu (klasördeki en yüksek sürümlü MSI seçilir)
+                    var packetFilterPath = FindWindowsPacketFilterMsi(prerequisitesPath);
+                    if (packetFilterPath != null)
                     {
-                        File.AppendAllText(logPath, "Windows Packet Filter kurulumu başlatılıyor...\n");
+                        File.AppendAllText(logPath, $"Windows Packet Filter kurulumu başlatılıyor: {Path.GetFileName(packetFilterPath)}\n");
                         var packetFilterResult = ExecuteCommand("msiexec", $"/i \"{packetFilterPath}\" /quiet /norestart");
                         File.AppendAllText(logPath, $"Windows Packet Filter kurulum sonucu: {packetFilterResult}\n");
                     }
                     else
                     {
-                        // Eski exe dosyasını da kontrol et
-                        var oldPacketFilterPath = Path.Combine(prerequisitesPath, "Windows.Packet.Filter.3.6.1.1.exe");
-                        if (File.Exists(oldPacketFilterPath))
-                        {
-                            File.AppendAllText(logPath, "Windows Packet Filter (eski sürüm) kurulumu başlatılıyor...\n");
-                            var packetFilterResult = ExecuteCommand(oldPacketFilterPath, "/S");
-                            File.AppendAllText(logPath, $"Windows Packet Filter kurulum sonucu: {packetFilterResult}\n");
-                        }
-                        else
-                        {
-                            File.AppendAllText(logPath, "Windows Packet Filter dosyası bulunamadı.\n");
-                        }
+                        File.AppendAllText(logPath, "Windows Packet Filter dosyası bulunamadı.\n");
                     }
 
                     // VC++ Redistributable kurulumu
@@ -4614,6 +4644,35 @@ namespace SplitWireTurkey
                     return false;
                 }
             });
+        }
+
+        /// <summary>
+        /// Prerequisites klasöründeki "Windows.Packet.Filter.*.x64.msi" dosyalarından sürüm numarası
+        /// en yüksek olanı döndürür; bulunamazsa null döner
+        /// </summary>
+        private static string FindWindowsPacketFilterMsi(string prerequisitesPath)
+        {
+            const string prefix = "Windows.Packet.Filter.";
+            const string suffix = ".x64.msi";
+
+            if (!Directory.Exists(prerequisitesPath))
+            {
+                return null;
+            }
+
+            return Directory.GetFiles(prerequisitesPath, prefix + "*" + suffix)
+                .Where(f => Path.GetFileName(f).EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(f =>
+                {
+                    var fileName = Path.GetFileName(f);
+                    if (fileName.Length < prefix.Length + suffix.Length)
+                    {
+                        return new Version(0, 0);
+                    }
+                    var versionText = fileName.Substring(prefix.Length, fileName.Length - prefix.Length - suffix.Length);
+                    return Version.TryParse(versionText, out var version) ? version : new Version(0, 0);
+                })
+                .FirstOrDefault();
         }
 
         private async Task<bool> RemoveServicesAsync()
@@ -5660,6 +5719,111 @@ $dohResults | ConvertTo-Json
             });
         }
 
+        // Drover payload dosyaları; hepsi Discord.exe ile aynı klasörde bulunmalıdır.
+        // drover-packet.bin (v0.9+) isteğe bağlıdır: sesli sohbet için UDP önek paketi.
+        private static readonly string[] DroverFileNames = { "version.dll", "drover.ini", "drover-packet.bin" };
+        private const string DroverOptionalFileName = "drover-packet.bin";
+
+        private static string GetDiscordBasePath()
+        {
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Discord");
+        }
+
+        private static bool IsDiscordAppDirectory(string appDir)
+        {
+            return File.Exists(Path.Combine(appDir, "Discord.exe"));
+        }
+
+        /// <summary>
+        /// %LOCALAPPDATA%\Discord\app-* klasörlerini döndürür (Discord.exe içerip içermediğine
+        /// IsDiscordAppDirectory ile bakılır). Discord klasörü yoksa boş dizi döner.
+        /// </summary>
+        private static string[] GetDiscordAppDirectories()
+        {
+            var discordBasePath = GetDiscordBasePath();
+            if (!Directory.Exists(discordBasePath))
+            {
+                return Array.Empty<string>();
+            }
+
+            return Directory.GetDirectories(discordBasePath, "app-*");
+        }
+
+        /// <summary>
+        /// Klasörde drover kurulu mu (version.dll var mı) kontrol eder
+        /// </summary>
+        private static bool HasDroverFiles(string appDir)
+        {
+            return File.Exists(Path.Combine(appDir, "version.dll"));
+        }
+
+        /// <summary>
+        /// Drover dosyalarını kaynak klasörden hedef klasöre kopyalar. Zorunlu bir dosyanın kaynağı yoksa
+        /// veya herhangi bir kopyalama başarısız olursa false döner; drover-packet.bin kaynağı yoksa sadece loglanır.
+        /// </summary>
+        private static bool CopyDroverFiles(string sourceDir, string targetDir, Action<string> log)
+        {
+            bool success = true;
+            foreach (var fileName in DroverFileNames)
+            {
+                var sourcePath = Path.Combine(sourceDir, fileName);
+                var targetPath = Path.Combine(targetDir, fileName);
+
+                if (!File.Exists(sourcePath))
+                {
+                    log($"{fileName} kaynak dosyası bulunamadı: {sourcePath}");
+                    if (fileName != DroverOptionalFileName)
+                    {
+                        success = false;
+                    }
+                    continue;
+                }
+
+                try
+                {
+                    File.Copy(sourcePath, targetPath, true);
+                    log($"{fileName} kopyalandı: {targetPath}");
+                }
+                catch (Exception ex)
+                {
+                    log($"{fileName} kopyalama hatası ({targetDir}): {ex.Message}");
+                    success = false;
+                }
+            }
+            return success;
+        }
+
+        /// <summary>
+        /// Klasördeki drover dosyalarını siler. Zaten olmayan dosyalar hata sayılmaz; silinemeyen
+        /// dosya olursa false döner. removedCount silinen dosya sayısını verir.
+        /// </summary>
+        private static bool RemoveDroverFiles(string appDir, Action<string> log, out int removedCount)
+        {
+            bool success = true;
+            removedCount = 0;
+            foreach (var fileName in DroverFileNames)
+            {
+                var filePath = Path.Combine(appDir, fileName);
+                if (!File.Exists(filePath))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    File.Delete(filePath);
+                    removedCount++;
+                    log($"{fileName} silindi: {filePath}");
+                }
+                catch (Exception ex)
+                {
+                    log($"{fileName} silinirken hata ({appDir}): {ex.Message}");
+                    success = false;
+                }
+            }
+            return success;
+        }
+
         /// <summary>
         /// Drover dosyalarını temizler
         /// </summary>
@@ -5703,57 +5867,23 @@ $dohResults | ConvertTo-Json
                     int cleanedFolders = 0;
 
                     // Discord base path'i bul
-                    var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                    var discordBasePath = Path.Combine(localAppData, "Discord");
+                    var discordBasePath = GetDiscordBasePath();
 
                     if (Directory.Exists(discordBasePath))
                     {
                         // Tüm app-* klasörlerini bul
-                        var appDirectories = Directory.GetDirectories(discordBasePath, "app-*");
+                        var appDirectories = GetDiscordAppDirectories();
                         File.AppendAllText(logPath, $"{appDirectories.Length} adet app-* klasörü bulundu.\n");
 
                         // Her app-* klasöründe Discord.exe var mı kontrol et ve temizle
                         foreach (var appDir in appDirectories)
                         {
-                            var discordExePath = Path.Combine(appDir, "Discord.exe");
-                            if (File.Exists(discordExePath))
+                            if (IsDiscordAppDirectory(appDir))
                             {
                                 File.AppendAllText(logPath, $"Discord.exe bulundu: {appDir}\n");
-                                
-                                var versionDllPath = Path.Combine(appDir, "version.dll");
-                                var droverIniPath = Path.Combine(appDir, "drover.ini");
 
-                                bool folderCleaned = true;
-
-                                // version.dll sil
-                                if (File.Exists(versionDllPath))
-                                {
-                                    try
-                                    {
-                                        File.Delete(versionDllPath);
-                                        File.AppendAllText(logPath, $"version.dll silindi: {versionDllPath}\n");
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        File.AppendAllText(logPath, $"version.dll silinirken hata ({appDir}): {ex.Message}\n");
-                                        folderCleaned = false;
-                                    }
-                                }
-
-                                // drover.ini sil
-                                if (File.Exists(droverIniPath))
-                                {
-                                    try
-                                    {
-                                        File.Delete(droverIniPath);
-                                        File.AppendAllText(logPath, $"drover.ini silindi: {droverIniPath}\n");
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        File.AppendAllText(logPath, $"drover.ini silinirken hata ({appDir}): {ex.Message}\n");
-                                        folderCleaned = false;
-                                    }
-                                }
+                                // version.dll, drover.ini ve drover-packet.bin sil
+                                bool folderCleaned = RemoveDroverFiles(appDir, msg => File.AppendAllText(logPath, msg + "\n"), out _);
 
                                 if (folderCleaned)
                                 {
@@ -6020,46 +6150,21 @@ $dohResults | ConvertTo-Json
             File.AppendAllText(logPath, "3. Drover dosyaları temizleniyor...\n");
             try
             {
-                var discordPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Discord");
+                var discordPath = GetDiscordBasePath();
                 bool filesRemoved = false;
 
                 // Discord app-* klasörlerinde drover dosyalarını ara ve sil
                 if (Directory.Exists(discordPath))
                 {
-                    var appFolders = Directory.GetDirectories(discordPath, "app-*");
+                    var appFolders = GetDiscordAppDirectories();
                     File.AppendAllText(logPath, $"{appFolders.Length} adet app-* klasörü bulundu.\n");
                     
                     foreach (var appFolder in appFolders)
                     {
-                        var versionDllPath = Path.Combine(appFolder, "version.dll");
-                        var droverIniPath = Path.Combine(appFolder, "drover.ini");
-
-                        if (File.Exists(versionDllPath))
+                        RemoveDroverFiles(appFolder, msg => File.AppendAllText(logPath, msg + "\n"), out var removedCount);
+                        if (removedCount > 0)
                         {
-                            try
-                            {
-                                File.Delete(versionDllPath);
-                                filesRemoved = true;
-                                File.AppendAllText(logPath, $"version.dll silindi: {versionDllPath}\n");
-                            }
-                            catch (Exception ex)
-                            {
-                                File.AppendAllText(logPath, $"version.dll silinirken hata: {ex.Message}\n");
-                            }
-                        }
-
-                        if (File.Exists(droverIniPath))
-                        {
-                            try
-                            {
-                                File.Delete(droverIniPath);
-                                filesRemoved = true;
-                                File.AppendAllText(logPath, $"drover.ini silindi: {droverIniPath}\n");
-                            }
-                            catch (Exception ex)
-                            {
-                                File.AppendAllText(logPath, $"drover.ini silinirken hata: {ex.Message}\n");
-                            }
+                            filesRemoved = true;
                         }
                     }
 
@@ -6244,76 +6349,28 @@ $dohResults | ConvertTo-Json
 
                     // Drover dosyalarının kaynak yolları
                     var droverSourcePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "res", "drover");
-                    
-                    var versionDllSource = Path.Combine(droverSourcePath, "version.dll");
-                    var droverIniSource = Path.Combine(droverSourcePath, "drover.ini");
 
                     bool allFilesCopied = true;
                     int copiedFolders = 0;
 
                     // Discord base path'i bul
-                    var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                    var discordBasePath = Path.Combine(localAppData, "Discord");
+                    var discordBasePath = GetDiscordBasePath();
 
                     if (Directory.Exists(discordBasePath))
                     {
                         // Tüm app-* klasörlerini bul
-                        var appDirectories = Directory.GetDirectories(discordBasePath, "app-*");
+                        var appDirectories = GetDiscordAppDirectories();
                         File.AppendAllText(logPath, $"{appDirectories.Length} adet app-* klasörü bulundu.\n");
 
                         // Her app-* klasöründe Discord.exe var mı kontrol et ve kopyala
                         foreach (var appDir in appDirectories)
                         {
-                            var discordExePath = Path.Combine(appDir, "Discord.exe");
-                            if (File.Exists(discordExePath))
+                            if (IsDiscordAppDirectory(appDir))
                             {
                                 File.AppendAllText(logPath, $"Discord.exe bulundu: {appDir}\n");
-                                
-                                // Hedef yolları
-                                var versionDllTarget = Path.Combine(appDir, "version.dll");
-                                var droverIniTarget = Path.Combine(appDir, "drover.ini");
 
-                                bool folderCopied = true;
-
-                                // version.dll kopyala
-                                if (File.Exists(versionDllSource))
-                                {
-                                    try
-                                    {
-                                        File.Copy(versionDllSource, versionDllTarget, true);
-                                        File.AppendAllText(logPath, $"version.dll kopyalandı: {versionDllTarget}\n");
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        File.AppendAllText(logPath, $"version.dll kopyalama hatası ({appDir}): {ex.Message}\n");
-                                        folderCopied = false;
-                                    }
-                                }
-                                else
-                                {
-                                    File.AppendAllText(logPath, $"version.dll kaynak dosyası bulunamadı: {versionDllSource}\n");
-                                    folderCopied = false;
-                                }
-
-                                // drover.ini kopyala
-                                if (File.Exists(droverIniSource))
-                                {
-                                    try
-                                    {
-                                        File.Copy(droverIniSource, droverIniTarget, true);
-                                        File.AppendAllText(logPath, $"drover.ini kopyalandı: {droverIniTarget}\n");
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        File.AppendAllText(logPath, $"drover.ini kopyalama hatası ({appDir}): {ex.Message}\n");
-                                        folderCopied = false;
-                                    }
-                                }
-                                else
-                                {
-                                    File.AppendAllText(logPath, $"drover.ini kaynak dosyası bulunamadı: {droverIniSource}\n");
-                                    folderCopied = false;
-                                }
+                                // version.dll, drover.ini ve drover-packet.bin kopyala
+                                bool folderCopied = CopyDroverFiles(droverSourcePath, appDir, msg => File.AppendAllText(logPath, msg + "\n"));
 
                                 if (folderCopied)
                                 {
@@ -6753,43 +6810,15 @@ Get-DnsClientDohServerAddress
                     // Kısa bir bekleme süresi ekle
                     await Task.Delay(2000);
 
-                    var discordPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Discord");
                     bool filesRemoved = false;
 
                     // Discord app-* klasörlerinde drover dosyalarını ara ve sil
-                    if (Directory.Exists(discordPath))
+                    foreach (var appFolder in GetDiscordAppDirectories())
                     {
-                        var appFolders = Directory.GetDirectories(discordPath, "app-*");
-                        foreach (var appFolder in appFolders)
+                        RemoveDroverFiles(appFolder, msg => Debug.WriteLine(msg), out var removedCount);
+                        if (removedCount > 0)
                         {
-                            var versionDllPath = Path.Combine(appFolder, "version.dll");
-                            var droverIniPath = Path.Combine(appFolder, "drover.ini");
-
-                            if (File.Exists(versionDllPath))
-                            {
-                                try
-                                {
-                                    File.Delete(versionDllPath);
-                                    filesRemoved = true;
-                                }
-                                catch (Exception ex)
-                                {
-                                    Debug.WriteLine($"version.dll silinirken hata: {ex.Message}");
-                                }
-                            }
-
-                            if (File.Exists(droverIniPath))
-                            {
-                                try
-                                {
-                                    File.Delete(droverIniPath);
-                                    filesRemoved = true;
-                }
-                catch (Exception ex)
-                {
-                                    Debug.WriteLine($"drover.ini silinirken hata: {ex.Message}");
-                                }
-                            }
+                            filesRemoved = true;
                         }
                     }
 
@@ -7476,43 +7505,15 @@ Get-DnsClientDohServerAddress
                 // Kısa bir bekleme süresi ekle
                 await Task.Delay(2000);
 
-                var discordPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Discord");
                 bool filesRemoved = false;
 
                 // Discord app-* klasörlerinde drover dosyalarını ara ve sil
-                if (Directory.Exists(discordPath))
+                foreach (var appFolder in GetDiscordAppDirectories())
                 {
-                    var appFolders = Directory.GetDirectories(discordPath, "app-*");
-                    foreach (var appFolder in appFolders)
+                    RemoveDroverFiles(appFolder, msg => Debug.WriteLine(msg), out var removedCount);
+                    if (removedCount > 0)
                     {
-                        var versionDllPath = Path.Combine(appFolder, "version.dll");
-                        var droverIniPath = Path.Combine(appFolder, "drover.ini");
-
-                        if (File.Exists(versionDllPath))
-                        {
-                            try
-                            {
-                                File.Delete(versionDllPath);
-                                filesRemoved = true;
-                            }
-                            catch (Exception ex)
-                            {
-                                Debug.WriteLine($"version.dll silinirken hata: {ex.Message}");
-                            }
-                        }
-
-                        if (File.Exists(droverIniPath))
-                        {
-                            try
-                            {
-                                File.Delete(droverIniPath);
-                                filesRemoved = true;
-                            }
-                            catch (Exception ex)
-                            {
-                                Debug.WriteLine($"drover.ini silinirken hata: {ex.Message}");
-                            }
-                        }
+                        filesRemoved = true;
                     }
                 }
 
@@ -10551,16 +10552,13 @@ Get-DnsClientDohServerAddress
                 }
                 
                 var jsonContent = File.ReadAllText(configPath);
-                var config = System.Text.Json.JsonSerializer.Deserialize<ProxiFyreConfig>(jsonContent);
+                var root = System.Text.Json.Nodes.JsonNode.Parse(jsonContent) as System.Text.Json.Nodes.JsonObject;
                 
-                if (config?.proxies != null)
+                foreach (var appNames in GetProxiFyreAppNameArrays(root))
                 {
-                    foreach (var proxy in config.proxies)
+                    if (appNames.Any(n => IsProxiFyreAppName(n, "chrome")))
                     {
-                        if (proxy.appNames != null && proxy.appNames.Contains("chrome"))
-                        {
-                            return true;
-                        }
+                        return true;
                     }
                 }
                 
@@ -10629,8 +10627,10 @@ Get-DnsClientDohServerAddress
                     }
                     
                     // JSON dosyasını oku
+                    // JsonNode ile okunur; böylece bilinmeyen alanlar (bypassLan, excludes vb.) korunur,
+                    // sadece proxies[] içindeki appNames dizileri değiştirilir.
                     var jsonContent = File.ReadAllText(configPath);
-                    var config = System.Text.Json.JsonSerializer.Deserialize<ProxiFyreConfig>(jsonContent);
+                    var config = System.Text.Json.Nodes.JsonNode.Parse(jsonContent) as System.Text.Json.Nodes.JsonObject;
                     
                     if (config == null)
                     {
@@ -10644,17 +10644,14 @@ Get-DnsClientDohServerAddress
                     if (addBrowsers)
                     {
                         // Tarayıcıları ekle
-                        foreach (var proxy in config.proxies)
+                        foreach (var appNames in GetProxiFyreAppNameArrays(config))
                         {
-                            if (proxy.appNames != null)
+                            foreach (var browser in browserApps)
                             {
-                                foreach (var browser in browserApps)
+                                if (!appNames.Any(n => IsProxiFyreAppName(n, browser)))
                                 {
-                                    if (!proxy.appNames.Contains(browser))
-                                    {
-                                        proxy.appNames.Add(browser);
-                                        File.AppendAllText(logPath, $"Tarayıcı eklendi: {browser}\n");
-                                    }
+                                    appNames.Add(System.Text.Json.Nodes.JsonValue.Create(browser));
+                                    File.AppendAllText(logPath, $"Tarayıcı eklendi: {browser}\n");
                                 }
                             }
                         }
@@ -10663,13 +10660,14 @@ Get-DnsClientDohServerAddress
                     else
                     {
                         // Tarayıcıları kaldır
-                        foreach (var proxy in config.proxies)
+                        foreach (var appNames in GetProxiFyreAppNameArrays(config))
                         {
-                            if (proxy.appNames != null)
+                            for (int i = appNames.Count - 1; i >= 0; i--)
                             {
-                                foreach (var browser in browserApps)
+                                var node = appNames[i];
+                                if (browserApps.Any(browser => IsProxiFyreAppName(node, browser)))
                                 {
-                                    proxy.appNames.RemoveAll(app => app == browser);
+                                    appNames.RemoveAt(i);
                                 }
                             }
                         }
@@ -10681,7 +10679,7 @@ Get-DnsClientDohServerAddress
                     {
                         WriteIndented = true
                     };
-                    var updatedJson = System.Text.Json.JsonSerializer.Serialize(config, options);
+                    var updatedJson = config.ToJsonString(options);
                     File.WriteAllText(configPath, updatedJson);
                     
                     File.AppendAllText(logPath, "app-config.json dosyası başarıyla güncellendi.\n");
@@ -10695,18 +10693,30 @@ Get-DnsClientDohServerAddress
             });
         }
 
-        // ProxiFyre config sınıfı
-        private class ProxiFyreConfig
+        // ProxiFyre config içindeki proxies[] öğelerinin appNames dizilerini döndürür
+        private static List<System.Text.Json.Nodes.JsonArray> GetProxiFyreAppNameArrays(System.Text.Json.Nodes.JsonObject config)
         {
-            public string logLevel { get; set; } = "";
-            public List<ProxiFyreProxy> proxies { get; set; } = new List<ProxiFyreProxy>();
+            var result = new List<System.Text.Json.Nodes.JsonArray>();
+            if (config?["proxies"] is System.Text.Json.Nodes.JsonArray proxies)
+            {
+                foreach (var proxy in proxies)
+                {
+                    if (proxy is System.Text.Json.Nodes.JsonObject proxyObject &&
+                        proxyObject["appNames"] is System.Text.Json.Nodes.JsonArray appNames)
+                    {
+                        result.Add(appNames);
+                    }
+                }
+            }
+            return result;
         }
 
-        private class ProxiFyreProxy
+        // appNames dizisindeki bir öğenin verilen uygulama adı olup olmadığını kontrol eder
+        private static bool IsProxiFyreAppName(System.Text.Json.Nodes.JsonNode node, string appName)
         {
-            public List<string> appNames { get; set; } = new List<string>();
-            public string socks5ProxyEndpoint { get; set; } = "";
-            public List<string> supportedProtocols { get; set; } = new List<string>();
+            return node is System.Text.Json.Nodes.JsonValue value &&
+                   value.TryGetValue<string>(out var name) &&
+                   name == appName;
         }
 
         // DNS ve DoH Ayarlarını Geri Al Butonu Event Handler
@@ -13176,4 +13186,7 @@ public class GitHubReleaseAsset
 
     [JsonPropertyName("browser_download_url")]
     public string BrowserDownloadUrl { get; set; }
+
+    [JsonPropertyName("digest")]
+    public string Digest { get; set; }
 }

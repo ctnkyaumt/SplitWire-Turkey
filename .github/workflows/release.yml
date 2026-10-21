@@ -29,7 +29,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x'
+        dotnet-version: '10.0.x'
 
     - name: Calculate New Version
       shell: pwsh
@@ -131,18 +131,18 @@ jobs:
         Copy-Item -Path "src/SplitWireTurkey/Resources/*" -Destination "src/res" -Recurse -Force
         
         # Copy built binaries to src/ where Inno Setup expects them
-        Copy-Item -Path "src/SplitWireTurkey/bin/Release/net8.0-windows/*" -Destination "src/" -Recurse -Force
+        Copy-Item -Path "src/SplitWireTurkey/bin/Release/net10.0-windows/*" -Destination "src/" -Recurse -Force
         
         # Clean up unnecessary files in bin folder (PDBs, XMLs)
-        Remove-Item -Path "src/SplitWireTurkey/bin/Release/net8.0-windows/*.pdb" -ErrorAction SilentlyContinue
-        Remove-Item -Path "src/SplitWireTurkey/bin/Release/net8.0-windows/*.xml" -ErrorAction SilentlyContinue
+        Remove-Item -Path "src/SplitWireTurkey/bin/Release/net10.0-windows/*.pdb" -ErrorAction SilentlyContinue
+        Remove-Item -Path "src/SplitWireTurkey/bin/Release/net10.0-windows/*.xml" -ErrorAction SilentlyContinue
 
     - name: Download Prerequisites
       shell: pwsh
       run: |
-        New-Item -ItemType Directory -Force -Path "src/Prerequisites/.NET 8.0"
-        Invoke-WebRequest -Uri "https://dotnetcli.azureedge.net/dotnet/WindowsDesktop/8.0.22/windowsdesktop-runtime-8.0.22-win-x64.exe" -OutFile "src/Prerequisites/.NET 8.0/windowsdesktop-runtime-8.0.22-win-x64.exe"
-        Invoke-WebRequest -Uri "https://dotnetcli.azureedge.net/dotnet/WindowsDesktop/8.0.22/windowsdesktop-runtime-8.0.22-win-x86.exe" -OutFile "src/Prerequisites/.NET 8.0/windowsdesktop-runtime-8.0.22-win-x86.exe"
+        New-Item -ItemType Directory -Force -Path "src/Prerequisites/.NET 10.0"
+        Invoke-WebRequest -Uri "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.13/windowsdesktop-runtime-10.0.13-win-x64.exe" -OutFile "src/Prerequisites/.NET 10.0/windowsdesktop-runtime-10.0.13-win-x64.exe"
+        Invoke-WebRequest -Uri "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.13/windowsdesktop-runtime-10.0.13-win-x86.exe" -OutFile "src/Prerequisites/.NET 10.0/windowsdesktop-runtime-10.0.13-win-x86.exe"
 
     - name: Compile Inno Setup Installer
       run: |
@@ -151,7 +151,7 @@ jobs:
     - name: Create ZIP Package
       shell: pwsh
       run: |
-        Compress-Archive -Path "src/SplitWireTurkey/bin/Release/net8.0-windows/*" -DestinationPath "src/build_output/SplitWire-Turkey-ZIP-Windows-${{ env.NEW_VERSION }}.zip" -Force
+        Compress-Archive -Path "src/SplitWireTurkey/bin/Release/net10.0-windows/*" -DestinationPath "src/build_output/SplitWire-Turkey-ZIP-Windows-${{ env.NEW_VERSION }}.zip" -Force
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
