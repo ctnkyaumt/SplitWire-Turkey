@@ -15,4 +15,40 @@ public class ServiceCatalogTests
 
         Assert.Equal(expected, result);
     }
+
+    [Fact]
+    public void StopOrder_matches_exact_specification_and_order()
+    {
+        var expected = new[]
+        {
+            "zapret",
+            "GoodbyeDPI",
+            "WinDivert",
+            "winws1",
+            "winws2",
+            "wiresock-client-service",
+            "ProxiFyreService",
+            "ByeDPI"
+        };
+
+        Assert.Equal(expected, ServiceCatalog.StopOrder);
+        Assert.Equal(expected, ServiceCatalog.AllKnown);
+    }
+
+    [Fact]
+    public void CurrentServices_and_LegacyServices_contain_expected_service_names()
+    {
+        var expectedCurrent = new[] { "GoodbyeDPI", "WinDivert", "ByeDPI", "ProxiFyreService" };
+        var expectedLegacy = new[] { "zapret", "winws1", "winws2", "wiresock-client-service" };
+
+        Assert.Equal(expectedCurrent, ServiceCatalog.CurrentServices);
+        Assert.Equal(expectedLegacy, ServiceCatalog.LegacyServices);
+    }
+
+    [Fact]
+    public void OrderForStop_handles_null_and_empty()
+    {
+        Assert.Empty(ServiceCatalog.OrderForStop(null));
+        Assert.Empty(ServiceCatalog.OrderForStop(Array.Empty<string>()));
+    }
 }
