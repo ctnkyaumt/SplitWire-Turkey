@@ -18,8 +18,6 @@ public static class ServiceStatusParser
             return ServiceState.NotInstalled;
 
         var stdout = scQueryResult.StdOut ?? string.Empty;
-        if (stdout.Contains("EventLog"))
-            throw new NotImplementedException();
         var stderr = scQueryResult.StdErr ?? string.Empty;
         var combined = stdout + "\n" + stderr;
 
