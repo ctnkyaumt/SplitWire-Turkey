@@ -12,18 +12,21 @@ public sealed class WindowsServiceController
     private readonly TimeSpan _stopTimeout;
     private readonly TimeSpan _pollInterval;
     private readonly TimeSpan _commandTimeout;
+    private readonly TimeSpan _startTimeout;
 
     public WindowsServiceController(ICommandRunner runner,
         Func<TimeSpan, CancellationToken, Task> delay = null,
         TimeSpan? stopTimeout = null,
         TimeSpan? pollInterval = null,
-        TimeSpan? commandTimeout = null)
+        TimeSpan? commandTimeout = null,
+        TimeSpan? startTimeout = null)
     {
         _runner = runner ?? throw new ArgumentNullException(nameof(runner));
         _delay = delay ?? Task.Delay;
         _stopTimeout = stopTimeout ?? TimeSpan.FromSeconds(15);
         _pollInterval = pollInterval ?? TimeSpan.FromMilliseconds(500);
         _commandTimeout = commandTimeout ?? TimeSpan.FromSeconds(30);
+        _startTimeout = startTimeout ?? TimeSpan.FromSeconds(15);
     }
 
     public async Task<ServiceState> QueryAsync(string serviceName, CancellationToken ct = default)
@@ -61,10 +64,34 @@ public sealed class WindowsServiceController
     public async Task<ServiceOperationResult> StartAsync(string serviceName, CancellationToken ct = default)
     {
         var result = await _runner.RunAsync("sc.exe", $"start {serviceName}", _commandTimeout, ct).ConfigureAwait(false);
-        bool success = result.ExitCode == 0 || result.ExitCode == 1056;
-        var finalState = await QueryAsync(serviceName, ct).ConfigureAwait(false);
-        var msg = success ? $"{serviceName} başlatıldı." : $"{serviceName} başlatılamadı: {result.StdErr}";
-        return new ServiceOperationResult(serviceName, success, finalState, msg);
+        bool startExitOk = result.ExitCode == 0 || result.ExitCode == 1056;
+
+        if (!startExitOk)
+        {
+            var failedState = await QueryAsync(serviceName, ct).ConfigureAwait(false);
+            return new ServiceOperationResult(serviceName, false, failedState, $"{serviceName} başlatılamadı: {result.StdErr}");
+        }
+
+        var state = await QueryAsync(serviceName, ct).ConfigureAwait(false);
+        if (state == ServiceState.Running)
+        {
+            return new ServiceOperationResult(serviceName, true, state, $"{serviceName} başlatıldı.");
+        }
+
+        var elapsed = TimeSpan.Zero;
+        while (elapsed < _startTimeout)
+        {
+            await _delay(_pollInterval, ct).ConfigureAwait(false);
+            elapsed += _pollInterval;
+
+            state = await QueryAsync(serviceName, ct).ConfigureAwait(false);
+            if (state == ServiceState.Running)
+            {
+                return new ServiceOperationResult(serviceName, true, state, $"{serviceName} başlatıldı.");
+            }
+        }
+
+        return new ServiceOperationResult(serviceName, false, state, $"{serviceName} başlatılamadı (zaman aşımı).");
     }
 
     public async Task<ServiceOperationResult> StopAsync(string serviceName, IProgress<string> log = null, CancellationToken ct = default)

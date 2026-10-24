@@ -179,6 +179,46 @@ public class WindowsServiceControllerTests
     }
 
     [Fact]
+    public async Task StartAsync_when_service_never_reaches_running_times_out()
+    {
+        var runner = new FakeCommandRunner();
+        runner.EnqueueResponse("sc.exe", "start StuckStartingService", new CommandResult(0, "", "", false));
+        runner.EnqueueResponse("sc.exe", "query StuckStartingService", new CommandResult(0, "STATE : 2 START_PENDING", "", false));
+        runner.EnqueueResponse("sc.exe", "query StuckStartingService", new CommandResult(0, "STATE : 2 START_PENDING", "", false));
+        runner.EnqueueResponse("sc.exe", "query StuckStartingService", new CommandResult(0, "STATE : 2 START_PENDING", "", false));
+
+        var controller = new WindowsServiceController(runner,
+            delay: (t, ct) => Task.CompletedTask,
+            pollInterval: TimeSpan.FromMilliseconds(500),
+            startTimeout: TimeSpan.FromMilliseconds(1000));
+
+        var result = await controller.StartAsync("StuckStartingService");
+
+        Assert.False(result.Success);
+        Assert.Equal(ServiceState.StartPending, result.FinalState);
+    }
+
+    [Fact]
+    public async Task StartAsync_when_start_fails_queries_once_without_polling()
+    {
+        var runner = new FakeCommandRunner();
+        runner.EnqueueResponse("sc.exe", "start FailedService", new CommandResult(5, "", "Access is denied.", false));
+        runner.EnqueueResponse("sc.exe", "query FailedService", new CommandResult(0, "STATE : 1 STOPPED", "", false));
+
+        var controller = new WindowsServiceController(runner, delay: (t, ct) => Task.CompletedTask);
+
+        var result = await controller.StartAsync("FailedService");
+
+        Assert.False(result.Success);
+        Assert.Equal(ServiceState.Stopped, result.FinalState);
+        Assert.Equal(new[]
+        {
+            "sc.exe|start FailedService",
+            "sc.exe|query FailedService"
+        }, runner.CallLog);
+    }
+
+    [Fact]
     public async Task QueryManyAsync_returns_case_insensitive_dictionary()
     {
         var runner = new FakeCommandRunner();
