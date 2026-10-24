@@ -5741,93 +5741,96 @@ $dohResults | ConvertTo-Json
         /// </summary>
         private async Task<bool> PerformPreSetupCleanupAsync()
         {
-            try
+            return await Task.Run(async () =>
             {
-                var logPath = GetLogPath();
-                File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Kurulum öncesi temizlik başlatılıyor...\n");
-                
-                // 1. Discord.exe'yi durdur
-                File.AppendAllText(logPath, "1. Discord.exe durduruluyor...\n");
-                var discordProcesses = Process.GetProcessesByName("Discord");
-                if (discordProcesses.Length > 0)
-                {
-                    foreach (var process in discordProcesses)
-                    {
-                        try
-                        {
-                            process.Kill();
-                            process.WaitForExit(5000); // 5 saniye bekle
-                            File.AppendAllText(logPath, $"Discord.exe işlemi durduruldu. PID: {process.Id}\n");
-                        }
-                        catch (Exception ex)
-                        {
-                            File.AppendAllText(logPath, $"Discord.exe işlemi durdurulurken hata: {ex.Message}\n");
-                        }
-                    }
-                }
-                else
-                {
-                    File.AppendAllText(logPath, "Discord.exe işlemi çalışmıyor.\n");
-                }
-
-                // Kısa bir bekleme süresi ekle
-                await Task.Delay(2000);
-
-                // 2. Hizmetleri sırayla durdur ve kaldır
-                File.AppendAllText(logPath, "2. Hizmetler durduruluyor ve kaldırılıyor...\n");
-                var log = new SyncProgress(msg => File.AppendAllText(logPath, $"{msg}\n"));
-                await _serviceController.StopAndDeleteManyAsync(ServiceCatalog.AllKnown, log);
-
-                // 3. Drover dosyalarını temizle
-                File.AppendAllText(logPath, "3. Drover dosyaları temizleniyor...\n");
                 try
                 {
-                    var discordPath = GetDiscordBasePath();
-                    bool filesRemoved = false;
-
-                    // Discord app-* klasörlerinde drover dosyalarını ara ve sil
-                    if (Directory.Exists(discordPath))
+                    var logPath = GetLogPath();
+                    File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Kurulum öncesi temizlik başlatılıyor...\n");
+                    
+                    // 1. Discord.exe'yi durdur
+                    File.AppendAllText(logPath, "1. Discord.exe durduruluyor...\n");
+                    var discordProcesses = Process.GetProcessesByName("Discord");
+                    if (discordProcesses.Length > 0)
                     {
-                        var appFolders = GetDiscordAppDirectories();
-                        File.AppendAllText(logPath, $"{appFolders.Length} adet app-* klasörü bulundu.\n");
-                        
-                        foreach (var appFolder in appFolders)
+                        foreach (var process in discordProcesses)
                         {
-                            RemoveDroverFiles(appFolder, msg => File.AppendAllText(logPath, msg + "\n"), out var removedCount);
-                            if (removedCount > 0)
+                            try
                             {
-                                filesRemoved = true;
+                                process.Kill();
+                                process.WaitForExit(5000); // 5 saniye bekle
+                                File.AppendAllText(logPath, $"Discord.exe işlemi durduruldu. PID: {process.Id}\n");
                             }
-                        }
-
-                        if (filesRemoved)
-                        {
-                            File.AppendAllText(logPath, "Drover dosyaları başarıyla temizlendi.\n");
-                        }
-                        else
-                        {
-                            File.AppendAllText(logPath, "Drover dosyaları bulunamadı.\n");
+                            catch (Exception ex)
+                            {
+                                File.AppendAllText(logPath, $"Discord.exe işlemi durdurulurken hata: {ex.Message}\n");
+                            }
                         }
                     }
                     else
                     {
-                        File.AppendAllText(logPath, "Discord klasörü bulunamadı.\n");
+                        File.AppendAllText(logPath, "Discord.exe işlemi çalışmıyor.\n");
                     }
+
+                    // Kısa bir bekleme süresi ekle
+                    await Task.Delay(2000);
+
+                    // 2. Hizmetleri sırayla durdur ve kaldır
+                    File.AppendAllText(logPath, "2. Hizmetler durduruluyor ve kaldırılıyor...\n");
+                    var log = new SyncProgress(msg => File.AppendAllText(logPath, $"{msg}\n"));
+                    await _serviceController.StopAndDeleteManyAsync(ServiceCatalog.AllKnown, log);
+
+                    // 3. Drover dosyalarını temizle
+                    File.AppendAllText(logPath, "3. Drover dosyaları temizleniyor...\n");
+                    try
+                    {
+                        var discordPath = GetDiscordBasePath();
+                        bool filesRemoved = false;
+
+                        // Discord app-* klasörlerinde drover dosyalarını ara ve sil
+                        if (Directory.Exists(discordPath))
+                        {
+                            var appFolders = GetDiscordAppDirectories();
+                            File.AppendAllText(logPath, $"{appFolders.Length} adet app-* klasörü bulundu.\n");
+                            
+                            foreach (var appFolder in appFolders)
+                            {
+                                RemoveDroverFiles(appFolder, msg => File.AppendAllText(logPath, msg + "\n"), out var removedCount);
+                                if (removedCount > 0)
+                                {
+                                    filesRemoved = true;
+                                }
+                            }
+
+                            if (filesRemoved)
+                            {
+                                File.AppendAllText(logPath, "Drover dosyaları başarıyla temizlendi.\n");
+                            }
+                            else
+                            {
+                                File.AppendAllText(logPath, "Drover dosyaları bulunamadı.\n");
+                            }
+                        }
+                        else
+                        {
+                            File.AppendAllText(logPath, "Discord klasörü bulunamadı.\n");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        File.AppendAllText(logPath, $"Drover dosyaları temizlenirken hata: {ex.Message}\n");
+                    }
+
+                    File.AppendAllText(logPath, "Kurulum öncesi temizlik tamamlandı.\n");
+                    return true;
                 }
                 catch (Exception ex)
                 {
-                    File.AppendAllText(logPath, $"Drover dosyaları temizlenirken hata: {ex.Message}\n");
+                    var logPath = GetLogPath();
+                    File.AppendAllText(logPath, $"Kurulum öncesi temizlik hatası: {ex.Message}\n");
+                    return false;
                 }
-
-                File.AppendAllText(logPath, "Kurulum öncesi temizlik tamamlandı.\n");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                var logPath = GetLogPath();
-                File.AppendAllText(logPath, $"Kurulum öncesi temizlik hatası: {ex.Message}\n");
-                return false;
-            }
+            });
         }
 
         /// <summary>
