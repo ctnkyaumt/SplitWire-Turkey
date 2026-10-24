@@ -1427,17 +1427,9 @@ namespace SplitWireTurkey
         {
             try
             {
-                var serviceChecks = new List<Task<(string serviceName, bool isInstalled)>>();
-                
-                // Tüm servisleri paralel olarak kontrol et
-                serviceChecks.Add(CheckServiceAsync("wiresock-client-service"));
-                serviceChecks.Add(CheckServiceAsync("ByeDPI"));
-                serviceChecks.Add(CheckServiceAsync("ProxiFyreService"));
-                serviceChecks.Add(CheckServiceAsync("winws1"));
-                serviceChecks.Add(CheckServiceAsync("winws2"));
-                serviceChecks.Add(CheckServiceAsync("zapret"));
-                serviceChecks.Add(CheckServiceAsync("GoodbyeDPI"));
-                serviceChecks.Add(CheckServiceAsync("WinDivert"));
+                var serviceChecks = ServiceCatalog.AllKnown
+                    .Select(async name => (serviceName: name, isInstalled: await _serviceController.IsInstalledAsync(name)))
+                    .ToList();
 
                 // Tüm sonuçları bekle
                 var results = await Task.WhenAll(serviceChecks);
@@ -1469,24 +1461,7 @@ namespace SplitWireTurkey
         {
             try
             {
-                var process = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = "sc",
-                        Arguments = $"query {serviceName}",
-                        UseShellExecute = false,
-                        CreateNoWindow = true,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true
-                    }
-                };
-
-                process.Start();
-                var output = await process.StandardOutput.ReadToEndAsync();
-                await process.WaitForExitAsync();
-
-                bool isInstalled = output.Contains("SERVICE_NAME:") && !output.Contains("1060");
+                bool isInstalled = await _serviceController.IsInstalledAsync(serviceName);
                 return (serviceName, isInstalled);
             }
             catch
@@ -1592,7 +1567,7 @@ namespace SplitWireTurkey
             try
             {
                 // Cache'den hizmet durumlarını kontrol et
-                var servicesToCheck = new[] { "zapret", "GoodbyeDPI", "WinDivert", "wiresock-client-service", "ByeDPI", "ProxiFyreService", "winws1", "winws2" };
+                var servicesToCheck = ServiceCatalog.AllKnown;
                 
                 foreach (var service in servicesToCheck)
                 {
@@ -7289,24 +7264,7 @@ Get-DnsClientDohServerAddress
         {
             try
             {
-                var process = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = "sc",
-                        Arguments = $"query {serviceName}",
-                        UseShellExecute = false,
-                        CreateNoWindow = true,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true
-                    }
-                };
-
-                process.Start();
-                var output = process.StandardOutput.ReadToEnd();
-                process.WaitForExit();
-
-                return output.Contains("SERVICE_NAME:") && !output.Contains("1060");
+                return _serviceController.IsInstalledAsync(serviceName).GetAwaiter().GetResult();
             }
             catch
             {
@@ -9008,30 +8966,14 @@ Get-DnsClientDohServerAddress
         {
             try
             {
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "sc.exe",
-                    Arguments = "query GoodbyeDPI",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true
-                };
-                
-                using var process = Process.Start(psi);
-                if (process != null)
-                {
-                    var output = await process.StandardOutput.ReadToEndAsync();
-                    await process.WaitForExitAsync();
-                    
-                    return output.Contains("RUNNING");
-                }
+                var state = await _serviceController.QueryAsync("GoodbyeDPI");
+                return state == ServiceState.Running;
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error checking GoodbyeDPI service status: {ex.Message}");
+                return false;
             }
-            return false;
         }
 
         private async Task StopGoodbyeDPIServiceAndProcesses()
@@ -9636,24 +9578,7 @@ Get-DnsClientDohServerAddress
         {
             try
             {
-                var process = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = "sc",
-                        Arguments = $"query {serviceName}",
-                        UseShellExecute = false,
-                        CreateNoWindow = true,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true
-                    }
-                };
-
-                process.Start();
-                var output = await process.StandardOutput.ReadToEndAsync();
-                await process.WaitForExitAsync();
-
-                return output.Contains("SERVICE_NAME:") && !output.Contains("1060");
+                return await _serviceController.IsInstalledAsync(serviceName);
             }
             catch
             {
