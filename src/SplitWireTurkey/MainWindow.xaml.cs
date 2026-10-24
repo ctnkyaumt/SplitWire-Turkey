@@ -3184,21 +3184,10 @@ namespace SplitWireTurkey
             
             try
             {
-                // Doğru sıralamayla hizmetleri kaldır (zapret, GoodbyeDPI, WinDivert sıralaması önemli)
-                var services = new[] { "zapret", "GoodbyeDPI", "WinDivert", "winws1", "winws2", "wiresock-client-service", "ByeDPI", "ProxiFyreService" };
                 var logPath = GetLogPath();
                 File.AppendAllText(logPath, "Tüm hizmetler durduruluyor ve kaldırılıyor...\n");
-                
-                foreach (var service in services)
-                {
-                    // Hizmeti durdur
-                    ExecuteCommand("sc", $"stop {service}");
-                    File.AppendAllText(logPath, $"{service} hizmeti durduruldu.\n");
-                    
-                    // Hizmeti sil
-                    ExecuteCommand("sc", $"delete {service}");
-                    File.AppendAllText(logPath, $"{service} hizmeti silindi.\n");
-                }
+                var log = new SyncProgress(msg => File.AppendAllText(logPath, msg + "\n"));
+                await _serviceController.StopAndDeleteManyAsync(ServiceCatalog.AllKnown, log);
 
                 // Batch/tek seferlik kurulumlardan kalan süreçleri de sonlandır (sc'nin ulaşamadığı)
                 File.AppendAllText(logPath, "Kalan DPI bypass süreçleri sonlandırılıyor...\n");
@@ -3615,88 +3604,15 @@ namespace SplitWireTurkey
             {
                 var logPath = GetLogPath();
                 File.AppendAllText(logPath, "GoodbyeDPI ve WinDivert hizmetleri kaldırılıyor...\n");
-                
-                // Hizmetleri durdur
-                File.AppendAllText(logPath, "GoodbyeDPI hizmeti durduruluyor...\n");
-                var stopGoodbyeDPI = await ExecuteCommandAsync("net", "stop GoodbyeDPI");
-                if (stopGoodbyeDPI == 0)
-                {
-                    File.AppendAllText(logPath, "GoodbyeDPI hizmeti başarıyla durduruldu.\n");
-                }
-                else
-                {
-                    File.AppendAllText(logPath, $"GoodbyeDPI hizmeti durdurulamadı (Exit Code: {stopGoodbyeDPI}).\n");
-                }
-                
-                File.AppendAllText(logPath, "WinDivert hizmeti durduruluyor...\n");
-                var stopWinDivert = await ExecuteCommandAsync("net", "stop WinDivert");
-                if (stopWinDivert == 0)
-                {
-                    File.AppendAllText(logPath, "WinDivert hizmeti başarıyla durduruldu.\n");
-                }
-                else
-                {
-                    File.AppendAllText(logPath, $"WinDivert hizmeti durdurulamadı (Exit Code: {stopWinDivert}).\n");
-                }
-                
-                // Hizmetleri kaldır
-                File.AppendAllText(logPath, "GoodbyeDPI hizmeti siliniyor...\n");
-                var removeGoodbyeDPI = await ExecuteCommandAsync("sc", "delete GoodbyeDPI");
-                if (removeGoodbyeDPI == 0)
-                {
-                    File.AppendAllText(logPath, "GoodbyeDPI hizmeti başarıyla silindi.\n");
-                }
-                else
-                {
-                    File.AppendAllText(logPath, $"GoodbyeDPI hizmeti silinemedi (Exit Code: {removeGoodbyeDPI}).\n");
-                }
-                
-                File.AppendAllText(logPath, "WinDivert hizmeti siliniyor...\n");
-                var removeWinDivert = await ExecuteCommandAsync("sc", "delete WinDivert");
-                if (removeWinDivert == 0)
-                {
-                    File.AppendAllText(logPath, "WinDivert hizmeti başarıyla silindi.\n");
-                }
-                else
-                {
-                    File.AppendAllText(logPath, $"WinDivert hizmeti silinemedi (Exit Code: {removeWinDivert}).\n");
-                }
-                
-                // Hizmet kaldırma işlemlerinin tamamlanmasını bekle
-                File.AppendAllText(logPath, "GoodbyeDPI ve WinDivert hizmet kaldırma işlemlerinin tamamlanması bekleniyor...\n");
-                await Task.Delay(1000); // 1 saniye bekle
-                
-                // Hizmetlerin gerçekten kaldırıldığını doğrula
-                File.AppendAllText(logPath, "GoodbyeDPI ve WinDivert hizmet kaldırma işlemleri doğrulanıyor...\n");
-                
-                var checkGoodbyeDPI = await ExecuteCommandAsync("sc", "query GoodbyeDPI");
-                if (checkGoodbyeDPI == 0)
-                {
-                    File.AppendAllText(logPath, "UYARI: GoodbyeDPI hizmeti hala mevcut!\n");
-                }
-                else
-                {
-                    File.AppendAllText(logPath, "GoodbyeDPI hizmeti başarıyla kaldırıldı.\n");
-                }
-                
-                var checkWinDivert = await ExecuteCommandAsync("sc", "query WinDivert");
-                if (checkWinDivert == 0)
-                {
-                    File.AppendAllText(logPath, "UYARI: WinDivert hizmeti hala mevcut!\n");
-                }
-                else
-                {
-                    File.AppendAllText(logPath, "WinDivert hizmeti başarıyla kaldırıldı.\n");
-                }
-                
+                var log = new SyncProgress(msg => File.AppendAllText(logPath, msg + "\n"));
+                await _serviceController.StopAndDeleteManyAsync(new[] { "GoodbyeDPI", "WinDivert" }, log);
                 File.AppendAllText(logPath, "GoodbyeDPI ve WinDivert hizmet kaldırma işlemleri tamamlandı.\n");
-                return true; // Hata olsa bile true döndür çünkü hizmet zaten kaldırılmış olabilir
+                return true;
             }
             catch (Exception ex)
             {
                 var logPath = GetLogPath();
-                File.AppendAllText(logPath, $"GoodbyeDPI hizmet kaldırma hatası: {ex.Message}\n");
-                Debug.WriteLine($"GoodbyeDPI hizmet kaldırma hatası: {ex.Message}");
+                File.AppendAllText(logPath, $"GoodbyeDPI ve WinDivert hizmet kaldırma hatası: {ex.Message}\n");
                 return false;
             }
         }
@@ -3707,62 +3623,9 @@ namespace SplitWireTurkey
             {
                 var logPath = GetLogPath();
                 File.AppendAllText(logPath, "Tüm hizmetler kaldırılıyor...\n");
-                
-                // GoodbyeDPI ve WinDivert hizmetlerini kaldır
-                File.AppendAllText(logPath, "GoodbyeDPI ve WinDivert hizmetleri kaldırılıyor...\n");
-                var goodbyeDPIRemoved = await RemoveGoodbyeDPIServicesAsync();
-                File.AppendAllText(logPath, "GoodbyeDPI ve WinDivert hizmetleri kaldırma tamamlandı.\n");
-                
-                // Hizmetleri doğru sırayla durdur (zapret, GoodbyeDPI, WinDivert sıralaması önemli)
-                var servicesToStop = new[] { "zapret", "GoodbyeDPI", "WinDivert", "winws1", "winws2", "wiresock-client-service", "ByeDPI", "ProxiFyreService" };
-                
-                File.AppendAllText(logPath, "Hizmetler durduruluyor...\n");
-                foreach (var service in servicesToStop)
-                {
-                    try
-                    {
-                        File.AppendAllText(logPath, $"{service} hizmeti durduruluyor...\n");
-                        var result = await ExecuteCommandAsync("net", $"stop {service}");
-                        if (result == 0)
-                        {
-                            File.AppendAllText(logPath, $"{service} hizmeti başarıyla durduruldu.\n");
-                        }
-                        else
-                        {
-                            File.AppendAllText(logPath, $"{service} hizmeti durdurulamadı (Exit Code: {result}).\n");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        File.AppendAllText(logPath, $"{service} hizmeti durdurma hatası: {ex.Message}\n");
-                    }
-                }
-                
-                // Tüm hizmetleri sil (aynı sıralama)
-                var servicesToDelete = new[] { "zapret", "GoodbyeDPI", "WinDivert", "winws1", "winws2", "wiresock-client-service", "ByeDPI", "ProxiFyreService" };
-                
-                File.AppendAllText(logPath, "Hizmetler siliniyor...\n");
-                foreach (var service in servicesToDelete)
-                {
-                    try
-                    {
-                        File.AppendAllText(logPath, $"{service} hizmeti siliniyor...\n");
-                        var result = await ExecuteCommandAsync("sc", $"delete {service}");
-                        if (result == 0)
-                        {
-                            File.AppendAllText(logPath, $"{service} hizmeti başarıyla silindi.\n");
-                        }
-                        else
-                        {
-                            File.AppendAllText(logPath, $"{service} hizmeti silinemedi (Exit Code: {result}).\n");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        File.AppendAllText(logPath, $"{service} hizmeti silme hatası: {ex.Message}\n");
-                    }
-                }
-                
+                var log = new SyncProgress(msg => File.AppendAllText(logPath, msg + "\n"));
+                await _serviceController.StopAndDeleteManyAsync(ServiceCatalog.AllKnown, log);
+
                 // Batch/tek seferlik kurulumlardan kalan süreçleri de sonlandır (sc'nin ulaşamadığı)
                 File.AppendAllText(logPath, "Kalan DPI bypass süreçleri sonlandırılıyor...\n");
                 await KillDpiBypassProcessesAsync(logPath);
@@ -3772,32 +3635,6 @@ namespace SplitWireTurkey
                 await RemoveFirewallRulesAsync();
                 File.AppendAllText(logPath, "Windows Firewall kuralları temizleme tamamlandı.\n");
 
-                // Hizmet kaldırma işlemlerinin tamamlanmasını bekle
-                File.AppendAllText(logPath, "Hizmet kaldırma işlemlerinin tamamlanması bekleniyor...\n");
-                await Task.Delay(2000); // 2 saniye bekle
-                
-                // Hizmetlerin gerçekten kaldırıldığını doğrula
-                File.AppendAllText(logPath, "Hizmet kaldırma işlemleri doğrulanıyor...\n");
-                foreach (var service in servicesToDelete)
-                {
-                    try
-                    {
-                        var checkResult = await ExecuteCommandAsync("sc", $"query {service}");
-                        if (checkResult == 0)
-                        {
-                            File.AppendAllText(logPath, $"UYARI: {service} hizmeti hala mevcut!\n");
-                        }
-                        else
-                        {
-                            File.AppendAllText(logPath, $"{service} hizmeti başarıyla kaldırıldı.\n");
-                        }
-                    }
-                    catch
-                    {
-                        File.AppendAllText(logPath, $"{service} hizmeti kontrol edilemedi.\n");
-                    }
-                }
-                
                 File.AppendAllText(logPath, "Tüm hizmet kaldırma işlemleri tamamlandı.\n");
                 return true;
             }
@@ -4561,37 +4398,20 @@ namespace SplitWireTurkey
 
         private async Task<bool> RemoveServicesAsync()
         {
-            return await Task.Run(() =>
+            try
             {
-                try
-                {
-                    var logPath = GetLogPath();
-                    
-                    // Hizmetleri durdur ve kaldır
-                    var services = new[] { "GoodbyeDPI", "WinDivert", "wiresock-client-service" };
-                    
-                    foreach (var service in services)
-                    {
-                        File.AppendAllText(logPath, $"{service} hizmeti kaldırılıyor...\n");
-                        
-                        // Hizmeti durdur
-                        var stopResult = ExecuteCommand("net", $"stop {service}");
-                        File.AppendAllText(logPath, $"{service} durdurma sonucu: {stopResult}\n");
-                        
-                        // Hizmeti kaldır
-                        var removeResult = ExecuteCommand("sc", $"delete {service}");
-                        File.AppendAllText(logPath, $"{service} kaldırma sonucu: {removeResult}\n");
-                    }
-
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    var logPath = GetLogPath();
-                    File.AppendAllText(logPath, $"Hizmet kaldırma hatası: {ex.Message}\n");
-                    return false;
-                }
-            });
+                var logPath = GetLogPath();
+                var services = new[] { "GoodbyeDPI", "WinDivert", "wiresock-client-service" };
+                var log = new SyncProgress(msg => File.AppendAllText(logPath, msg + "\n"));
+                await _serviceController.StopAndDeleteManyAsync(services, log);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                var logPath = GetLogPath();
+                File.AppendAllText(logPath, $"Hizmet kaldırma hatası: {ex.Message}\n");
+                return false;
+            }
         }
 
         private async Task<bool> InstallProxiFyreAsync()
@@ -4639,17 +4459,8 @@ namespace SplitWireTurkey
                 File.AppendAllText(logPath, "ProxiFyreService ve ByeDPI hizmetleri durduruluyor ve kaldırılıyor...\n");
                 
                 var services = new[] { "ProxiFyreService", "ByeDPI" };
-                
-                foreach (var service in services)
-                {
-                    // Hizmeti durdur
-                    ExecuteCommand("sc", $"stop {service}");
-                    File.AppendAllText(logPath, $"{service} hizmeti durduruldu.\n");
-                    
-                    // Hizmeti sil
-                    ExecuteCommand("sc", $"delete {service}");
-                    File.AppendAllText(logPath, $"{service} hizmeti silindi.\n");
-                }
+                var log = new SyncProgress(msg => File.AppendAllText(logPath, msg + "\n"));
+                await _serviceController.StopAndDeleteManyAsync(services, log);
 
                 // Windows Firewall kurallarını da temizle
                 File.AppendAllText(logPath, "Windows Firewall kuralları temizleniyor...\n");
@@ -4667,43 +4478,23 @@ namespace SplitWireTurkey
 
         private async Task<bool> StartProxiFyreServiceAsync()
         {
-            return await Task.Run(() =>
+            try
             {
-                try
-                {
-                    var logPath = GetLogPath();
-                    File.AppendAllText(logPath, "ProxiFyreService başlatılıyor...\n");
+                var logPath = GetLogPath();
+                File.AppendAllText(logPath, "ProxiFyreService başlatılıyor...\n");
 
-                    // ProxiFyreService'i başlat
-                    var startResult = ExecuteCommandString("net", "start ProxiFyreService");
-                    File.AppendAllText(logPath, $"ProxiFyreService başlatma sonucu: {startResult}\n");
+                var result = await _serviceController.StartAsync("ProxiFyreService");
+                File.AppendAllText(logPath, $"ProxiFyreService başlatma sonucu: {result.Message}\n");
+                File.AppendAllText(logPath, $"ProxiFyreService durum kontrolü: {result.FinalState}\n");
 
-                    // Başarı kontrolü - birden fazla başarı göstergesi kontrol et
-                    var success = startResult.Contains("başlatıldı") || 
-                                 startResult.Contains("started") || 
-                                 startResult.Contains("SUCCESS") ||
-                                 startResult.Contains("service is already running") ||
-                                 startResult.Contains("hizmet zaten çalışıyor");
-
-                    // Hizmetin gerçekten çalışıp çalışmadığını kontrol et
-                    if (success)
-                    {
-                        var queryResult = ExecuteCommandString("sc", "query ProxiFyreService");
-                        File.AppendAllText(logPath, $"ProxiFyreService durum kontrolü: {queryResult}\n");
-                        
-                        // Hizmet durumunu kontrol et
-                        success = queryResult.Contains("RUNNING") || queryResult.Contains("ÇALIŞIYOR");
-                    }
-
-                    return success;
-                }
-                catch (Exception ex)
-                {
-                    var logPath = GetLogPath();
-                    File.AppendAllText(logPath, $"ProxiFyreService başlatma hatası: {ex.Message}\n");
-                    return false;
-                }
-            });
+                return result.Success && result.FinalState == ServiceState.Running;
+            }
+            catch (Exception ex)
+            {
+                var logPath = GetLogPath();
+                File.AppendAllText(logPath, $"ProxiFyreService başlatma hatası: {ex.Message}\n");
+                return false;
+            }
         }
 
         /// <summary>
@@ -4934,11 +4725,10 @@ namespace SplitWireTurkey
                     File.AppendAllText(logPath, $"Hizmet kurulum sonucu (Exit Code): {installResult}\n");
 
                     // Hizmetin başarıyla kurulup kurulmadığını kontrol et
-                    var queryResult = ExecuteCommandString("sc", "query ByeDPI");
-                    File.AppendAllText(logPath, $"ByeDPI hizmeti durum kontrolü: {queryResult}\n");
+                    var state = _serviceController.QueryAsync("ByeDPI").GetAwaiter().GetResult();
+                    File.AppendAllText(logPath, $"ByeDPI hizmeti durum kontrolü: {state}\n");
                     
-                    var installSuccess = queryResult.Contains("RUNNING") || queryResult.Contains("ÇALIŞIYOR") || 
-                                       queryResult.Contains("STOPPED") || queryResult.Contains("DURDURULDU");
+                    var installSuccess = state != ServiceState.NotInstalled && state != ServiceState.Unknown;
 
                     if (installSuccess)
                     {
@@ -5941,131 +5731,93 @@ $dohResults | ConvertTo-Json
         /// </summary>
         private async Task<bool> PerformPreSetupCleanupAsync()
         {
-            return await Task.Run(() =>
-            {
-                try
-                {
-                    var logPath = GetLogPath();
-                    File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Kurulum öncesi temizlik başlatılıyor...\n");
-                    
-                    // 1. Discord.exe'yi durdur
-                    File.AppendAllText(logPath, "1. Discord.exe durduruluyor...\n");
-                    var discordProcesses = Process.GetProcessesByName("Discord");
-                    if (discordProcesses.Length > 0)
-                    {
-                        foreach (var process in discordProcesses)
-                        {
-                            try
-                            {
-                                process.Kill();
-                                process.WaitForExit(5000); // 5 saniye bekle
-                                File.AppendAllText(logPath, $"Discord.exe işlemi durduruldu. PID: {process.Id}\n");
-                            }
-                            catch (Exception ex)
-                            {
-                                File.AppendAllText(logPath, $"Discord.exe işlemi durdurulurken hata: {ex.Message}\n");
-                            }
-                        }
-                    }
-                    else
-                    {
-                        File.AppendAllText(logPath, "Discord.exe işlemi çalışmıyor.\n");
-                    }
-
-                    // Kısa bir bekleme süresi ekle
-                    Thread.Sleep(2000);
-
-                                // 2. Hizmetleri sırayla durdur ve kaldır
-            var services = new[] { 
-                "GoodbyeDPI", 
-                "zapret", 
-                "byedpi", 
-                "winws1", 
-                "winws2", 
-                "wiresock-client-service", 
-                "ProxiFyreService", 
-                "WinDivert" 
-            };
-            
-            File.AppendAllText(logPath, "2. Hizmetler durduruluyor ve kaldırılıyor...\n");
-            
-            foreach (var service in services)
-            {
-                File.AppendAllText(logPath, $"{service} hizmeti işleniyor...\n");
-                
-                try
-                {
-                    // Hizmeti durdur
-                    var stopResult = ExecuteCommand("sc", $"stop {service}");
-                    File.AppendAllText(logPath, $"{service} durdurma sonucu: {stopResult}\n");
-                    
-                    // Kısa bekleme
-                    Thread.Sleep(1000);
-                    
-                    // Hizmeti kaldır
-                    var removeResult = ExecuteCommand("sc", $"delete {service}");
-                    File.AppendAllText(logPath, $"{service} kaldırma sonucu: {removeResult}\n");
-                    
-                    // Kısa bekleme
-                    Thread.Sleep(1000);
-                }
-                catch (Exception ex)
-                {
-                    File.AppendAllText(logPath, $"{service} işlenirken hata: {ex.Message}\n");
-                }
-            }
-
-            // 3. Drover dosyalarını temizle
-            File.AppendAllText(logPath, "3. Drover dosyaları temizleniyor...\n");
             try
             {
-                var discordPath = GetDiscordBasePath();
-                bool filesRemoved = false;
-
-                // Discord app-* klasörlerinde drover dosyalarını ara ve sil
-                if (Directory.Exists(discordPath))
+                var logPath = GetLogPath();
+                File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Kurulum öncesi temizlik başlatılıyor...\n");
+                
+                // 1. Discord.exe'yi durdur
+                File.AppendAllText(logPath, "1. Discord.exe durduruluyor...\n");
+                var discordProcesses = Process.GetProcessesByName("Discord");
+                if (discordProcesses.Length > 0)
                 {
-                    var appFolders = GetDiscordAppDirectories();
-                    File.AppendAllText(logPath, $"{appFolders.Length} adet app-* klasörü bulundu.\n");
-                    
-                    foreach (var appFolder in appFolders)
+                    foreach (var process in discordProcesses)
                     {
-                        RemoveDroverFiles(appFolder, msg => File.AppendAllText(logPath, msg + "\n"), out var removedCount);
-                        if (removedCount > 0)
+                        try
                         {
-                            filesRemoved = true;
+                            process.Kill();
+                            process.WaitForExit(5000); // 5 saniye bekle
+                            File.AppendAllText(logPath, $"Discord.exe işlemi durduruldu. PID: {process.Id}\n");
                         }
-                    }
-
-                    if (filesRemoved)
-                    {
-                        File.AppendAllText(logPath, "Drover dosyaları başarıyla temizlendi.\n");
-                    }
-                    else
-                    {
-                        File.AppendAllText(logPath, "Drover dosyaları bulunamadı.\n");
+                        catch (Exception ex)
+                        {
+                            File.AppendAllText(logPath, $"Discord.exe işlemi durdurulurken hata: {ex.Message}\n");
+                        }
                     }
                 }
                 else
                 {
-                    File.AppendAllText(logPath, "Discord klasörü bulunamadı.\n");
+                    File.AppendAllText(logPath, "Discord.exe işlemi çalışmıyor.\n");
                 }
-            }
-            catch (Exception ex)
-            {
-                File.AppendAllText(logPath, $"Drover dosyaları temizlenirken hata: {ex.Message}\n");
-            }
 
-            File.AppendAllText(logPath, "Kurulum öncesi temizlik tamamlandı.\n");
-                    return true;
+                // Kısa bir bekleme süresi ekle
+                await Task.Delay(2000);
+
+                // 2. Hizmetleri sırayla durdur ve kaldır
+                File.AppendAllText(logPath, "2. Hizmetler durduruluyor ve kaldırılıyor...\n");
+                var log = new SyncProgress(msg => File.AppendAllText(logPath, $"{msg}\n"));
+                await _serviceController.StopAndDeleteManyAsync(ServiceCatalog.AllKnown, log);
+
+                // 3. Drover dosyalarını temizle
+                File.AppendAllText(logPath, "3. Drover dosyaları temizleniyor...\n");
+                try
+                {
+                    var discordPath = GetDiscordBasePath();
+                    bool filesRemoved = false;
+
+                    // Discord app-* klasörlerinde drover dosyalarını ara ve sil
+                    if (Directory.Exists(discordPath))
+                    {
+                        var appFolders = GetDiscordAppDirectories();
+                        File.AppendAllText(logPath, $"{appFolders.Length} adet app-* klasörü bulundu.\n");
+                        
+                        foreach (var appFolder in appFolders)
+                        {
+                            RemoveDroverFiles(appFolder, msg => File.AppendAllText(logPath, msg + "\n"), out var removedCount);
+                            if (removedCount > 0)
+                            {
+                                filesRemoved = true;
+                            }
+                        }
+
+                        if (filesRemoved)
+                        {
+                            File.AppendAllText(logPath, "Drover dosyaları başarıyla temizlendi.\n");
+                        }
+                        else
+                        {
+                            File.AppendAllText(logPath, "Drover dosyaları bulunamadı.\n");
+                        }
+                    }
+                    else
+                    {
+                        File.AppendAllText(logPath, "Discord klasörü bulunamadı.\n");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    var logPath = GetLogPath();
-                    File.AppendAllText(logPath, $"Kurulum öncesi temizlik hatası: {ex.Message}\n");
-                    return false;
+                    File.AppendAllText(logPath, $"Drover dosyaları temizlenirken hata: {ex.Message}\n");
                 }
-            });
+
+                File.AppendAllText(logPath, "Kurulum öncesi temizlik tamamlandı.\n");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                var logPath = GetLogPath();
+                File.AppendAllText(logPath, $"Kurulum öncesi temizlik hatası: {ex.Message}\n");
+                return false;
+            }
         }
 
         /// <summary>
@@ -6073,37 +5825,23 @@ $dohResults | ConvertTo-Json
         /// </summary>
         private async Task<bool> RemoveAllServicesForDLLSetupAsync()
         {
-            return await Task.Run(() =>
+            try
             {
-                try
-                {
-                    var logPath = GetLogPath();
-                    File.AppendAllText(logPath, "ByeDPI DLL kurulumu için hizmetler kaldırılıyor...\n");
-                    
-                    var services = new[] { "GoodbyeDPI", "WinDivert", "ProxiFyreService", "wiresock-client-service", "ByeDPI" };
-                    
-                    foreach (var service in services)
-                    {
-                        File.AppendAllText(logPath, $"{service} hizmeti kaldırılıyor...\n");
-                        
-                        // Hizmeti durdur
-                        var stopResult = ExecuteCommand("net", $"stop {service}");
-                        File.AppendAllText(logPath, $"{service} durdurma sonucu: {stopResult}\n");
-                        
-                        // Hizmeti kaldır
-                        var removeResult = ExecuteCommand("sc", $"delete {service}");
-                        File.AppendAllText(logPath, $"{service} kaldırma sonucu: {removeResult}\n");
-                    }
+                var logPath = GetLogPath();
+                File.AppendAllText(logPath, "ByeDPI DLL kurulumu için hizmetler kaldırılıyor...\n");
+                
+                var services = new[] { "GoodbyeDPI", "WinDivert", "ProxiFyreService", "wiresock-client-service", "ByeDPI" };
+                var log = new SyncProgress(msg => File.AppendAllText(logPath, msg + "\n"));
+                await _serviceController.StopAndDeleteManyAsync(services, log);
 
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    var logPath = GetLogPath();
-                    File.AppendAllText(logPath, $"Hizmet kaldırma hatası: {ex.Message}\n");
-                    return false;
-                }
-            });
+                return true;
+            }
+            catch (Exception ex)
+            {
+                var logPath = GetLogPath();
+                File.AppendAllText(logPath, $"Hizmet kaldırma hatası: {ex.Message}\n");
+                return false;
+            }
         }
 
         /// <summary>
@@ -6648,23 +6386,8 @@ Get-DnsClientDohServerAddress
             {
                 ShowLoading(true);
 
-                // 1. ByeDPI hizmetini durdur ve kaldır
-                if (IsServiceInstalled("ByeDPI"))
-                {
-                    ExecuteCommand("sc", "stop ByeDPI");
-                    await Task.Delay(2000);
-                    ExecuteCommand("sc", "delete ByeDPI");
-                    await Task.Delay(1000);
-                }
-
-                // 2. ProxiFyreService hizmetini durdur ve kaldır
-                if (IsServiceInstalled("ProxiFyreService"))
-                {
-                    ExecuteCommand("sc", "stop ProxiFyreService");
-                    await Task.Delay(2000);
-                    ExecuteCommand("sc", "delete ProxiFyreService");
-                    await Task.Delay(1000);
-                }
+                // 1 & 2. ProxiFyreService ve ByeDPI hizmetlerini durdur ve kaldır
+                await _serviceController.StopAndDeleteManyAsync(new[] { "ProxiFyreService", "ByeDPI" });
 
                 // Firewall kurallarını kaldır
                 await RemoveFirewallRulesAsync();
@@ -7399,13 +7122,7 @@ Get-DnsClientDohServerAddress
 
                 ShowLoading(true);
 
-                // Hizmeti durdur
-                ExecuteCommand("sc", $"stop {serviceName}");
-                await Task.Delay(2000);
-
-                // Hizmeti kaldır
-                ExecuteCommand("sc", $"delete {serviceName}");
-                await Task.Delay(1000);
+                await _serviceController.StopAndDeleteAsync(serviceName);
 
                 ShowLoading(false);
                 System.Windows.MessageBox.Show(LanguageManager.GetText("messages", "service_removed_success").Replace("{0}", serviceName), LanguageManager.GetText("messages", "success"), MessageBoxButton.OK, MessageBoxImage.Information);
@@ -8980,17 +8697,7 @@ Get-DnsClientDohServerAddress
         {
             try
             {
-                ExecuteCommand("sc", "stop GoodbyeDPI");
-                
-                // Wait up to 5 seconds for the service to stop completely
-                for (int i = 0; i < 10; i++)
-                {
-                    if (!await IsGoodbyeDPIServiceRunningAsync())
-                    {
-                        break;
-                    }
-                    await Task.Delay(500);
-                }
+                await _serviceController.StopAsync("GoodbyeDPI");
                 
                 var processes = Process.GetProcessesByName("goodbyedpi");
                 foreach (var process in processes)
@@ -9478,16 +9185,8 @@ Get-DnsClientDohServerAddress
             {
                 var logPath = GetGoodbyeDPILogPath();
                 File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] GoodbyeDPI hizmet temizliği başlatılıyor...\n");
-                
-                // Mevcut GoodbyeDPI hizmetini durdur ve kaldır
-                File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] GoodbyeDPI hizmeti durduruluyor...\n");
-                ExecuteCommand("sc", "stop GoodbyeDPI");
-                await Task.Delay(2000);
-                
-                File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] GoodbyeDPI hizmeti kaldırılıyor...\n");
-                ExecuteCommand("sc", "delete GoodbyeDPI");
-                await Task.Delay(1000);
-                
+                var log = new SyncProgress(msg => File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {msg}\n"));
+                await _serviceController.StopAndDeleteAsync("GoodbyeDPI", log);
                 File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] GoodbyeDPI hizmet temizliği tamamlandı.\n");
             }
             catch (Exception ex)
@@ -9552,20 +9251,15 @@ Get-DnsClientDohServerAddress
         {
             try
             {
-                if (IsServiceInstalled("ByeDPI"))
+                var state = await _serviceController.QueryAsync("ByeDPI");
+                if (state == ServiceState.Running)
                 {
-                    var queryResult = ExecuteCommandString("sc", "query ByeDPI");
-                    if (queryResult.Contains("RUNNING") || queryResult.Contains("ÇALIŞIYOR"))
-                    {
-                        var logPath = GetLogPath();
-                        File.AppendAllText(logPath, "Blacklist güncellendi, ByeDPI hizmeti yeniden başlatılıyor...\n");
-                        
-                        ExecuteCommand("sc", "stop ByeDPI");
-                        await Task.Delay(1500);
-                        ExecuteCommand("sc", "start ByeDPI");
-                        
-                        File.AppendAllText(logPath, "ByeDPI hizmeti başarıyla yeniden başlatıldı.\n");
-                    }
+                    var logPath = GetLogPath();
+                    File.AppendAllText(logPath, "Blacklist güncellendi, ByeDPI hizmeti yeniden başlatılıyor...\n");
+                    var log = new SyncProgress(msg => File.AppendAllText(logPath, msg + "\n"));
+                    await _serviceController.StopAsync("ByeDPI", log);
+                    await _serviceController.StartAsync("ByeDPI");
+                    File.AppendAllText(logPath, "ByeDPI hizmeti başarıyla yeniden başlatıldı.\n");
                 }
             }
             catch (Exception ex)
@@ -10610,35 +10304,8 @@ Get-DnsClientDohServerAddress
 
                 // 2. Tüm hizmetleri durdur ve kaldır
                 File.AppendAllText(logPath, "2. Tüm hizmetler kaldırılıyor...\n");
-                var services = new[] { 
-                    "GoodbyeDPI", 
-                    "zapret", 
-                    "ByeDPI", 
-                    "winws1", 
-                    "winws2", 
-                    "wiresock-client-service", 
-                    "ProxiFyreService", 
-                    "WinDivert" 
-                };
-                
-                foreach (var service in services)
-                {
-                    try
-                    {
-                        if (IsServiceInstalled(service))
-                        {
-                            ExecuteCommand("sc", $"stop {service}");
-                            await Task.Delay(1000);
-                            ExecuteCommand("sc", $"delete {service}");
-                            await Task.Delay(1000);
-                            File.AppendAllText(logPath, $"2. {service} hizmeti kaldırıldı.\n");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        File.AppendAllText(logPath, $"2. {service} hizmeti kaldırılırken hata: {ex.Message}\n");
-                    }
-                }
+                var log = new SyncProgress(msg => File.AppendAllText(logPath, $"2. {msg}\n"));
+                await _serviceController.StopAndDeleteManyAsync(ServiceCatalog.AllKnown, log);
 
                 // Firewall kurallarını kaldır
                 File.AppendAllText(logPath, "2.5. Windows Firewall kuralları kaldırılıyor...\n");
