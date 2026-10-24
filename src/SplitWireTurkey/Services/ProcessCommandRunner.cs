@@ -1,13 +1,67 @@
-﻿namespace SplitWireTurkey.Services;
+namespace SplitWireTurkey.Services;
 
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 
+using System.Diagnostics;
+
 public sealed class ProcessCommandRunner : ICommandRunner
 {
-    public Task<CommandResult> RunAsync(string fileName, string arguments, TimeSpan timeout, CancellationToken cancellationToken = default)
+    public async Task<CommandResult> RunAsync(string fileName, string arguments, TimeSpan timeout, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var psi = new ProcessStartInfo
+        {
+            FileName = fileName,
+            Arguments = arguments,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+
+        Process process;
+        try
+        {
+            process = Process.Start(psi);
+            if (process == null)
+            {
+                return new CommandResult(-1, string.Empty, "Failed to start process.", false);
+            }
+        }
+        catch (Exception ex)
+        {
+            return new CommandResult(-1, string.Empty, ex.Message, false);
+        }
+
+        using (process)
+        {
+            var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+            var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
+
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            linkedCts.CancelAfter(timeout);
+
+            try
+            {
+                await process.WaitForExitAsync(linkedCts.Token);
+                var stdout = await stdoutTask;
+                var stderr = await stderrTask;
+                return new CommandResult(process.ExitCode, stdout, stderr, false);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+                catch
+                {
+                    // Ignore exceptions during kill
+                }
+
+                return new CommandResult(-1, string.Empty, string.Empty, true);
+            }
+        }
     }
 }
