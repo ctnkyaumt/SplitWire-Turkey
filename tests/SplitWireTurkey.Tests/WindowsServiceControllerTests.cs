@@ -157,6 +157,28 @@ public class WindowsServiceControllerTests
     }
 
     [Fact]
+    public async Task StartAsync_polls_until_running()
+    {
+        var runner = new FakeCommandRunner();
+        runner.EnqueueResponse("sc.exe", "start SlowlyStartingService", new CommandResult(0, "", "", false));
+        runner.EnqueueResponse("sc.exe", "query SlowlyStartingService", new CommandResult(0, "STATE : 2 START_PENDING", "", false));
+        runner.EnqueueResponse("sc.exe", "query SlowlyStartingService", new CommandResult(0, "STATE : 4 RUNNING", "", false));
+
+        var controller = new WindowsServiceController(runner, delay: (t, ct) => Task.CompletedTask);
+
+        var result = await controller.StartAsync("SlowlyStartingService");
+
+        Assert.True(result.Success);
+        Assert.Equal(ServiceState.Running, result.FinalState);
+        Assert.Equal(new[]
+        {
+            "sc.exe|start SlowlyStartingService",
+            "sc.exe|query SlowlyStartingService",
+            "sc.exe|query SlowlyStartingService"
+        }, runner.CallLog);
+    }
+
+    [Fact]
     public async Task QueryManyAsync_returns_case_insensitive_dictionary()
     {
         var runner = new FakeCommandRunner();
