@@ -1,4 +1,6 @@
-﻿namespace SplitWireTurkey.Services;
+namespace SplitWireTurkey.Services;
+
+using System;
 
 public enum ServiceState
 {

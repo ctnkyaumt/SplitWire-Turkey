@@ -1,5 +1,6 @@
-﻿namespace SplitWireTurkey.Tests;
+namespace SplitWireTurkey.Tests;
 
+using System;
 using SplitWireTurkey.Services;
 using Xunit;
 
@@ -28,7 +29,7 @@ SERVICE_NAME: AppMgmt
         WAIT_HINT          : 0x0
 ";
 
-    // Real fixture verbatim from temp_work/fixtures/sc_query_missing_en.txt (exit 36)
+    // Real fixture verbatim from temp_work/fixtures/sc_query_missing_en.txt
     private const string ScQueryMissingEn = @"[SC] EnumQueryServicesStatus:OpenService FAILED 1060:
 
 The specified service does not exist as an installed service.
@@ -65,8 +66,17 @@ SERVICE_NAME: OrnekHizmet
     [Fact]
     public void Parse_real_missing_fixture_returns_NotInstalled()
     {
-        // exit=36 in fixture, contains FAILED 1060:
-        var result = new CommandResult(36, ScQueryMissingEn, string.Empty, false);
+        // Real sc.exe exit code is 1060
+        var result = new CommandResult(1060, ScQueryMissingEn, string.Empty, false);
+        var state = ServiceStatusParser.Parse(result);
+        Assert.Equal(ServiceState.NotInstalled, state);
+    }
+
+    [Fact]
+    public void Parse_failed_1060_text_alone_returns_NotInstalled()
+    {
+        // Unrelated exit code (e.g. 1), but output contains FAILED 1060
+        var result = new CommandResult(1, ScQueryMissingEn, string.Empty, false);
         var state = ServiceStatusParser.Parse(result);
         Assert.Equal(ServiceState.NotInstalled, state);
     }

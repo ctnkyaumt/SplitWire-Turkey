@@ -31,7 +31,7 @@ public sealed class WindowsServiceController
         if (string.IsNullOrWhiteSpace(serviceName))
             return ServiceState.Unknown;
 
-        var result = await _runner.RunAsync("sc.exe", $"query {serviceName}", _commandTimeout, ct);
+        var result = await _runner.RunAsync("sc.exe", $"query {serviceName}", _commandTimeout, ct).ConfigureAwait(false);
         return ServiceStatusParser.Parse(result);
     }
 
@@ -46,7 +46,7 @@ public sealed class WindowsServiceController
             if (string.IsNullOrWhiteSpace(name))
                 continue;
 
-            dict[name] = await QueryAsync(name, ct);
+            dict[name] = await QueryAsync(name, ct).ConfigureAwait(false);
         }
 
         return dict;
@@ -54,15 +54,15 @@ public sealed class WindowsServiceController
 
     public async Task<bool> IsInstalledAsync(string serviceName, CancellationToken ct = default)
     {
-        var state = await QueryAsync(serviceName, ct);
+        var state = await QueryAsync(serviceName, ct).ConfigureAwait(false);
         return state != ServiceState.NotInstalled && state != ServiceState.Unknown;
     }
 
     public async Task<ServiceOperationResult> StartAsync(string serviceName, CancellationToken ct = default)
     {
-        var result = await _runner.RunAsync("sc.exe", $"start {serviceName}", _commandTimeout, ct);
+        var result = await _runner.RunAsync("sc.exe", $"start {serviceName}", _commandTimeout, ct).ConfigureAwait(false);
         bool success = result.ExitCode == 0 || result.ExitCode == 1056;
-        var finalState = await QueryAsync(serviceName, ct);
+        var finalState = await QueryAsync(serviceName, ct).ConfigureAwait(false);
         var msg = success ? $"{serviceName} başlatıldı." : $"{serviceName} başlatılamadı: {result.StdErr}";
         return new ServiceOperationResult(serviceName, success, finalState, msg);
     }
@@ -70,7 +70,7 @@ public sealed class WindowsServiceController
     public async Task<ServiceOperationResult> StopAsync(string serviceName, IProgress<string> log = null, CancellationToken ct = default)
     {
         log?.Report($"{serviceName} durumu denetleniyor...");
-        var state = await QueryAsync(serviceName, ct);
+        var state = await QueryAsync(serviceName, ct).ConfigureAwait(false);
 
         if (state == ServiceState.NotInstalled)
         {
@@ -85,15 +85,15 @@ public sealed class WindowsServiceController
         }
 
         log?.Report($"{serviceName} hizmeti durduruluyor...");
-        await _runner.RunAsync("sc.exe", $"stop {serviceName}", _commandTimeout, ct);
+        await _runner.RunAsync("sc.exe", $"stop {serviceName}", _commandTimeout, ct).ConfigureAwait(false);
 
         var elapsed = TimeSpan.Zero;
         while (elapsed < _stopTimeout)
         {
-            await _delay(_pollInterval, ct);
+            await _delay(_pollInterval, ct).ConfigureAwait(false);
             elapsed += _pollInterval;
 
-            state = await QueryAsync(serviceName, ct);
+            state = await QueryAsync(serviceName, ct).ConfigureAwait(false);
             if (state == ServiceState.Stopped || state == ServiceState.NotInstalled)
             {
                 log?.Report($"{serviceName} hizmeti durduruldu.");
@@ -107,14 +107,14 @@ public sealed class WindowsServiceController
 
     public async Task<ServiceOperationResult> StopAndDeleteAsync(string serviceName, IProgress<string> log = null, CancellationToken ct = default)
     {
-        var stopResult = await StopAsync(serviceName, log, ct);
+        var stopResult = await StopAsync(serviceName, log, ct).ConfigureAwait(false);
         if (stopResult.FinalState == ServiceState.NotInstalled)
         {
             return stopResult;
         }
 
         log?.Report($"{serviceName} hizmeti siliniyor...");
-        var deleteResult = await _runner.RunAsync("sc.exe", $"delete {serviceName}", _commandTimeout, ct);
+        var deleteResult = await _runner.RunAsync("sc.exe", $"delete {serviceName}", _commandTimeout, ct).ConfigureAwait(false);
 
         bool deleteSuccess = deleteResult.ExitCode == 0 || deleteResult.ExitCode == 1072 || deleteResult.ExitCode == 1060;
         var finalState = deleteSuccess ? ServiceState.NotInstalled : stopResult.FinalState;
@@ -128,7 +128,7 @@ public sealed class WindowsServiceController
         var results = new List<ServiceOperationResult>();
         foreach (var name in ordered)
         {
-            var res = await StopAndDeleteAsync(name, log, ct);
+            var res = await StopAndDeleteAsync(name, log, ct).ConfigureAwait(false);
             results.Add(res);
         }
         return results.AsReadOnly();

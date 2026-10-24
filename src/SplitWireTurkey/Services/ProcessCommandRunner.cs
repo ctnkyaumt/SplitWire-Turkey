@@ -1,10 +1,9 @@
 namespace SplitWireTurkey.Services;
 
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-
-using System.Diagnostics;
 
 public sealed class ProcessCommandRunner : ICommandRunner
 {
@@ -44,9 +43,9 @@ public sealed class ProcessCommandRunner : ICommandRunner
 
             try
             {
-                await process.WaitForExitAsync(linkedCts.Token);
-                var stdout = await stdoutTask;
-                var stderr = await stderrTask;
+                await process.WaitForExitAsync(linkedCts.Token).ConfigureAwait(false);
+                var stdout = await stdoutTask.ConfigureAwait(false);
+                var stderr = await stderrTask.ConfigureAwait(false);
                 return new CommandResult(process.ExitCode, stdout, stderr, false);
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
