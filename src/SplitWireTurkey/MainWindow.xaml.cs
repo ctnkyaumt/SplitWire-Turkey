@@ -4684,12 +4684,22 @@ namespace SplitWireTurkey
                 }
             });
 
+            var hostsPath = GetByeDPIHostsFilePath();
             if (useBlacklist)
             {
                 if (!parameters.Contains("-H") && !parameters.Contains("--hosts"))
                 {
-                    parameters += " -H hosts.txt";
+                    parameters += $" -H \"{hostsPath}\"";
                 }
+            }
+
+            if (parameters.Contains("-H hosts.txt") || parameters.Contains("-H \"hosts.txt\"") ||
+                parameters.Contains("--hosts hosts.txt") || parameters.Contains("--hosts \"hosts.txt\""))
+            {
+                parameters = parameters.Replace("-H hosts.txt", $"-H \"{hostsPath}\"")
+                                       .Replace("-H \"hosts.txt\"", $"-H \"{hostsPath}\"")
+                                       .Replace("--hosts hosts.txt", $"--hosts \"{hostsPath}\"")
+                                       .Replace("--hosts \"hosts.txt\"", $"--hosts \"{hostsPath}\"");
             }
 
             return await Task.Run(() =>
@@ -9203,6 +9213,11 @@ Get-DnsClientDohServerAddress
             return Path.Combine(localAppData, "SplitWire-Turkey", "GoodbyeDPI");
         }
 
+        private string GetByeDPIHostsFilePath()
+        {
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "res", "byedpi", "hosts.txt");
+        }
+
         private void SyncByeDPIHostsFile()
         {
             try
@@ -9210,8 +9225,8 @@ Get-DnsClientDohServerAddress
                 var localGoodbyeDPIPath = GetLocalAppDataGoodbyeDPIPath();
                 var blacklistPath = Path.Combine(localGoodbyeDPIPath, "blacklist.txt");
                 
-                var targetDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "res", "byedpi");
-                var targetPath = Path.Combine(targetDir, "hosts.txt");
+                var targetPath = GetByeDPIHostsFilePath();
+                var targetDir = Path.GetDirectoryName(targetPath);
 
                 if (!Directory.Exists(targetDir))
                 {
