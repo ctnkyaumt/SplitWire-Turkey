@@ -22,6 +22,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.IO.Compression;
+using SplitWireTurkey.Services;
 
 namespace SplitWireTurkey
 {
@@ -594,8 +595,28 @@ namespace SplitWireTurkey
         private bool _isUninstalling = false;
         private bool _isSingleInstanceReject = false;
 
+        // Servis kontrol ve komut calistirma altyapisi
+        private readonly ProcessCommandRunner _commandRunner = new ProcessCommandRunner();
+        private readonly WindowsServiceController _serviceController;
+
+        private sealed class SyncProgress : IProgress<string>
+        {
+            private readonly Action<string> _handler;
+
+            public SyncProgress(Action<string> handler)
+            {
+                _handler = handler ?? throw new ArgumentNullException(nameof(handler));
+            }
+
+            public void Report(string value)
+            {
+                _handler(value);
+            }
+        }
+
         public MainWindow()
         {
+            _serviceController = new WindowsServiceController(_commandRunner);
             InitializeComponent();
             
             // Single instance reddedilme durumunu kontrol et
@@ -3818,31 +3839,21 @@ namespace SplitWireTurkey
 
         private async Task<int> ExecuteCommandAsync(string command, string arguments)
         {
-            return await Task.Run(() =>
+            try
             {
-                try
+                var result = await _commandRunner.RunAsync(command, arguments, TimeSpan.FromMinutes(10));
+                if (result.TimedOut)
                 {
-                    var startInfo = new ProcessStartInfo
-                    {
-                        FileName = command,
-                        Arguments = arguments,
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        CreateNoWindow = true
-                    };
-
-                    using var process = new Process { StartInfo = startInfo };
-                    process.Start();
-                    process.WaitForExit();
-                    return process.ExitCode;
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Command execution failed: {ex.Message}");
+                    Debug.WriteLine("Command execution failed: Command timed out after 10 minutes");
                     return -1;
                 }
-            });
+                return result.ExitCode;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Command execution failed: {ex.Message}");
+                return -1;
+            }
         }
 
         private void ShowRestartMessage()
@@ -4981,31 +4992,22 @@ namespace SplitWireTurkey
                 var logPath = GetLogPath();
                 File.AppendAllText(logPath, $"Komut çalıştırılıyor: {command} {arguments}\n");
                 
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = command,
-                    Arguments = arguments,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true,
-                    Verb = "runas" // Yönetici izni ile çalıştır
-                };
+                var result = _commandRunner.RunAsync(command, arguments, TimeSpan.FromMinutes(10)).GetAwaiter().GetResult();
 
-                using var process = new Process { StartInfo = startInfo };
-                process.Start();
-                var output = process.StandardOutput.ReadToEnd();
-                var error = process.StandardError.ReadToEnd();
-                process.WaitForExit();
-                
-                File.AppendAllText(logPath, $"Çıktı: {output}\n");
-                if (!string.IsNullOrEmpty(error))
+                if (result.TimedOut)
                 {
-                    File.AppendAllText(logPath, $"Hata: {error}\n");
+                    File.AppendAllText(logPath, "Komut Hatası: Zaman aşımı (10 dakika)\n");
+                    return -1;
                 }
-                File.AppendAllText(logPath, $"Exit Code: {process.ExitCode}\n");
+
+                File.AppendAllText(logPath, $"Çıktı: {result.StdOut}\n");
+                if (!string.IsNullOrEmpty(result.StdErr))
+                {
+                    File.AppendAllText(logPath, $"Hata: {result.StdErr}\n");
+                }
+                File.AppendAllText(logPath, $"Exit Code: {result.ExitCode}\n");
                 
-                return process.ExitCode;
+                return result.ExitCode;
             }
             catch (Exception ex)
             {
@@ -5022,31 +5024,22 @@ namespace SplitWireTurkey
                 var logPath = GetLogPath();
                 File.AppendAllText(logPath, $"Komut çalıştırılıyor: {command} {arguments}\n");
                 
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = command,
-                    Arguments = arguments,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true,
-                    Verb = "runas" // Yönetici izni ile çalıştır
-                };
+                var result = _commandRunner.RunAsync(command, arguments, TimeSpan.FromMinutes(10)).GetAwaiter().GetResult();
 
-                using var process = new Process { StartInfo = startInfo };
-                process.Start();
-                var output = process.StandardOutput.ReadToEnd();
-                var error = process.StandardError.ReadToEnd();
-                process.WaitForExit();
-                
-                File.AppendAllText(logPath, $"Çıktı: {output}\n");
-                if (!string.IsNullOrEmpty(error))
+                if (result.TimedOut)
                 {
-                    File.AppendAllText(logPath, $"Hata: {error}\n");
+                    File.AppendAllText(logPath, "Komut Hatası: Zaman aşımı (10 dakika)\n");
+                    return "Hata: Zaman aşımı (10 dakika)";
                 }
-                File.AppendAllText(logPath, $"Exit Code: {process.ExitCode}\n");
+
+                File.AppendAllText(logPath, $"Çıktı: {result.StdOut}\n");
+                if (!string.IsNullOrEmpty(result.StdErr))
+                {
+                    File.AppendAllText(logPath, $"Hata: {result.StdErr}\n");
+                }
+                File.AppendAllText(logPath, $"Exit Code: {result.ExitCode}\n");
                 
-                return output + error; // Hem çıktı hem hata mesajını döndür
+                return result.StdOut + result.StdErr;
             }
             catch (Exception ex)
             {
@@ -7183,33 +7176,23 @@ Get-DnsClientDohServerAddress
         {
             try
             {
-                var psi = new ProcessStartInfo
+                var result = await _commandRunner.RunAsync(fileName, arguments, TimeSpan.FromMinutes(10));
+                if (result.TimedOut)
                 {
-                    FileName = fileName,
-                    Arguments = arguments,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true
-                };
-
-                using var process = Process.Start(psi);
-                if (process != null)
-                {
-                    var output = await process.StandardOutput.ReadToEndAsync();
-                    var error = await process.StandardError.ReadToEndAsync();
-                    
-                    await process.WaitForExitAsync();
-                    
-                    if (!string.IsNullOrEmpty(error))
-                    {
-                        return $"Output: {output}, Error: {error}, ExitCode: {process.ExitCode}";
-                    }
-                    
-                    return $"Output: {output}, ExitCode: {process.ExitCode}";
+                    return "Hata: Zaman aşımı (10 dakika)";
                 }
-                
-                return "Process başlatılamadı";
+
+                if (result.ExitCode == -1 && result.StdErr == "Failed to start process.")
+                {
+                    return "Process başlatılamadı";
+                }
+
+                if (!string.IsNullOrEmpty(result.StdErr))
+                {
+                    return $"Output: {result.StdOut}, Error: {result.StdErr}, ExitCode: {result.ExitCode}";
+                }
+
+                return $"Output: {result.StdOut}, ExitCode: {result.ExitCode}";
             }
             catch (Exception ex)
             {
