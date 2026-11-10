@@ -69,6 +69,41 @@ public static class SiteListMerger
 
     public static bool Covers(IEnumerable<string> entries, string host)
     {
-        throw new NotImplementedException();
+        if (entries == null || string.IsNullOrWhiteSpace(host))
+        {
+            return false;
+        }
+
+        var trimmedHost = host.Trim();
+        if (trimmedHost.Length == 0)
+        {
+            return false;
+        }
+
+        foreach (var rawEntry in entries)
+        {
+            if (rawEntry == null)
+            {
+                continue;
+            }
+
+            var entry = rawEntry.Trim();
+            if (entry.Length == 0 || entry.StartsWith("#", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (string.Equals(trimmedHost, entry, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (trimmedHost.EndsWith("." + entry, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
