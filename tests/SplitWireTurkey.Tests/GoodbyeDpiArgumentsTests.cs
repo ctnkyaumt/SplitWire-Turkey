@@ -27,4 +27,16 @@ public class GoodbyeDpiArgumentsTests
 
         Assert.Equal(expected, actual);
     }
+
+    [Fact]
+    public void Build_appends_quoted_blacklist_when_useSiteList_is_true()
+    {
+        const string input = "-9";
+        const string siteListPath = @"C:\Users\John Doe\AppData\Local\SplitWire-Turkey\GoodbyeDPI\blacklist.txt";
+        const string expected = @"-9 --blacklist ""C:\Users\John Doe\AppData\Local\SplitWire-Turkey\GoodbyeDPI\blacklist.txt""";
+
+        var actual = GoodbyeDpiArguments.Build(input, true, siteListPath, false);
+
+        Assert.Equal(expected, actual);
+    }
 }
