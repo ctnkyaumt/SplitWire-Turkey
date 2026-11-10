@@ -1,4 +1,4 @@
-Standart:-5 --set-ttl 5 --dns-addr 1.1.1.1 --dns-port 53 --dnsv6-addr 2606:4700:4700::1111 --dnsv6-port 53
+Standart:-9 --dns-addr 1.1.1.1 --dns-port 53 --dnsv6-addr 2606:4700:4700::1111 --dnsv6-port 53
 Alternatif:--set-ttl 3
 Alternatif 2:-5
 Alternatif 3:--set-ttl 3 --dns-addr 1.1.1.1 --dns-port 53 --dnsv6-addr 2606:4700:4700::1111 --dnsv6-port 53
@@ -23,3 +23,4 @@ Alternatif 21:-8 --set-ttl 7
 Alternatif 22:-9 --set-ttl 3
 Alternatif 23:-9 --set-ttl 4
 Alternatif 24:-9 --set-ttl 7
+Alternatif 25:-5 --set-ttl 5 --dns-addr 1.1.1.1 --dns-port 53 --dnsv6-addr 2606:4700:4700::1111 --dnsv6-port 53
