@@ -8,11 +8,6 @@ public static class GoodbyeDpiArguments
 {
     public static string Build(string presetArgs, bool useSiteList, string siteListPath, bool ipv6Available)
     {
-        if (useSiteList)
-        {
-            throw new NotImplementedException();
-        }
-
         var tokens = Tokenize(presetArgs);
         var retained = new List<string>();
 
@@ -31,6 +26,13 @@ public static class GoodbyeDpiArguments
             }
 
             retained.Add(token);
+        }
+
+        if (useSiteList)
+        {
+            var cleanPath = siteListPath.Trim().Trim('\"');
+            retained.Add("--blacklist");
+            retained.Add($"\"{cleanPath}\"");
         }
 
         return string.Join(" ", retained).Trim();
