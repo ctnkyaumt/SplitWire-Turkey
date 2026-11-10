@@ -35,4 +35,35 @@ public class SiteListMergerTests
         Assert.Equal(new[] { "a.com" }, SiteListMerger.Merge(new[] { "a.com" }, null));
         Assert.Equal(new[] { "b.com" }, SiteListMerger.Merge(null, new[] { "b.com" }));
     }
+
+    [Theory]
+    [InlineData("discordapp.com", true)]
+    [InlineData("cdn.discordapp.com", true)]
+    [InlineData("sub.cdn.discordapp.com", true)]
+    [InlineData("CDN.DISCORDAPP.COM", true)]
+    [InlineData("notdiscordapp.com", false)]
+    [InlineData("discordapp.com.attacker.com", false)]
+    [InlineData("google.com", false)]
+    [InlineData("ignored.com", false)]
+    public void Covers_identifies_subdomains_and_rejects_lookalikes_and_ignores_comments(string host, bool expected)
+    {
+        var entries = new[]
+        {
+            "# this is a comment",
+            "# ignored.com",
+            "discordapp.com",
+            "roblox.com"
+        };
+
+        var actual = SiteListMerger.Covers(entries, host);
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    public void Covers_handles_null_or_empty()
+    {
+        Assert.False(SiteListMerger.Covers(null, "discordapp.com"));
+        Assert.False(SiteListMerger.Covers(new[] { "discordapp.com" }, null));
+        Assert.False(SiteListMerger.Covers(new[] { "discordapp.com" }, "   "));
+    }
 }
