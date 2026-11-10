@@ -96,6 +96,7 @@ namespace SplitWireTurkey
         private const string REG_GOODBYEDPI_PRESET = "GoodbyeDPIPreset";
         private const string REG_BYEDPI_PRESET = "ByeDPIPreset";
         private const string REG_CHECK_FOR_UPDATES = "CheckForUpdates";
+        private const string REG_GOODBYEDPI_USE_SITE_LIST = "GoodbyeDPIUseSiteList";
 
         // Güncelleme sabitleri
         private const string UPDATE_REPO_OWNER = "ctnkyaumt";
@@ -790,9 +791,9 @@ namespace SplitWireTurkey
                 localAppDataRun.Text = $" {LocalAppDataSplitWirePath} ";
             
             // Switch'lerin varsayılan durumlarını ayarla
-            if (chkGoodbyeDPIUseBlacklist != null && chkGoodbyeDPIUseBlacklist.IsChecked != false)
+            if (chkGoodbyeDPIUseBlacklist != null)
             {
-                chkGoodbyeDPIUseBlacklist.IsChecked = false;
+                chkGoodbyeDPIUseBlacklist.IsChecked = LoadGoodbyeDPIUseSiteListFromRegistry();
             }
             
             if (chkByeDPIUseBlacklist != null && chkByeDPIUseBlacklist.IsChecked != false)
@@ -1051,6 +1052,53 @@ namespace SplitWireTurkey
             catch (Exception ex)
             {
                 Debug.WriteLine($"Auto DNS Change ayarı Registry'ye kaydedilemedi: {ex.Message}");
+            }
+        }
+
+        private void SaveGoodbyeDPIUseSiteListToRegistry(bool isEnabled)
+        {
+            try
+            {
+                using (var key = Registry.CurrentUser.CreateSubKey(REG_KEY_PATH))
+                {
+                    if (key != null)
+                    {
+                        key.SetValue(REG_GOODBYEDPI_USE_SITE_LIST, isEnabled ? 1 : 0, RegistryValueKind.DWord);
+                        Debug.WriteLine($"GoodbyeDPI Use Site List ayarı Registry'ye kaydedildi: {(isEnabled ? "Aktif" : "Pasif")}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"GoodbyeDPI Use Site List ayarı Registry'ye kaydedilemedi: {ex.Message}");
+            }
+        }
+
+        private bool LoadGoodbyeDPIUseSiteListFromRegistry()
+        {
+            try
+            {
+                using (var key = Registry.CurrentUser.OpenSubKey(REG_KEY_PATH))
+                {
+                    if (key != null)
+                    {
+                        var val = key.GetValue(REG_GOODBYEDPI_USE_SITE_LIST);
+                        if (val != null && val is int intVal)
+                        {
+                            var isEnabled = intVal == 1;
+                            Debug.WriteLine($"GoodbyeDPI Use Site List ayarı Registry'den okundu: {(isEnabled ? "Aktif" : "Pasif")}");
+                            return isEnabled;
+                        }
+                    }
+                }
+                
+                Debug.WriteLine("Registry'de GoodbyeDPI Use Site List ayarı bulunamadı, varsayılan aktif kullanılıyor");
+                return true; // Varsayılan: aktif
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"GoodbyeDPI Use Site List ayarı Registry'den okunamadı: {ex.Message}");
+                return true;
             }
         }
 
@@ -7404,6 +7452,7 @@ Get-DnsClientDohServerAddress
 
         private void ChkGoodbyeDPIUseBlacklist_Checked(object sender, RoutedEventArgs e)
         {
+            SaveGoodbyeDPIUseSiteListToRegistry(true);
             editBlacklistPanel.Visibility = Visibility.Visible;
             _goodbyeDPIUseBlacklistActive = true;
             
@@ -7413,6 +7462,7 @@ Get-DnsClientDohServerAddress
 
         private void ChkGoodbyeDPIUseBlacklist_Unchecked(object sender, RoutedEventArgs e)
         {
+            SaveGoodbyeDPIUseSiteListToRegistry(false);
             editBlacklistPanel.Visibility = Visibility.Collapsed;
             chkGoodbyeDPIEditBlacklist.IsChecked = false;
             txtGoodbyeDPIBlacklist.Visibility = Visibility.Collapsed;
@@ -8554,8 +8604,8 @@ Get-DnsClientDohServerAddress
                     return false;
                 }
 
-                // Dosyaları kopyala
-                var filesToCopy = new[] { "service_template.cmd", "batch_template.cmd", "presets.txt", "blacklist.txt" };
+                // Dosyaları kopyala (blacklist.txt hariç, o aşağıda özel birleştirilecek)
+                var filesToCopy = new[] { "service_template.cmd", "batch_template.cmd", "presets.txt" };
                 
                 foreach (var file in filesToCopy)
                 {
@@ -8565,6 +8615,31 @@ Get-DnsClientDohServerAddress
                     if (File.Exists(sourceFile))
                     {
                         File.Copy(sourceFile, destFile, true);
+                    }
+                }
+
+                // blacklist.txt: kullanıcı düzenlemelerini koru ve yeni varsayılanları birleştir
+                var bundledBlacklist = Path.Combine(sourcePath, "blacklist.txt");
+                var localBlacklist = Path.Combine(localGoodbyeDPIPath, "blacklist.txt");
+                if (File.Exists(bundledBlacklist))
+                {
+                    if (!File.Exists(localBlacklist))
+                    {
+                        File.Copy(bundledBlacklist, localBlacklist, true);
+                    }
+                    else
+                    {
+                        var localText = await File.ReadAllTextAsync(localBlacklist);
+                        var bundledText = await File.ReadAllTextAsync(bundledBlacklist);
+                        var localParsed = SiteListMerger.Parse(localText);
+                        var bundledParsed = SiteListMerger.Parse(bundledText);
+                        var merged = SiteListMerger.Merge(localParsed, bundledParsed);
+
+                        if (!localParsed.SequenceEqual(merged, StringComparer.Ordinal))
+                        {
+                            var mergedContent = string.Join("\r\n", merged) + "\r\n";
+                            await File.WriteAllTextAsync(localBlacklist, mergedContent);
+                        }
                     }
                 }
 
