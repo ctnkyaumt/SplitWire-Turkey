@@ -8,14 +8,9 @@ public static class GoodbyeDpiArguments
 {
     public static string Build(string presetArgs, bool useSiteList, string siteListPath, bool ipv6Available)
     {
-        if (ipv6Available)
+        if (useSiteList)
         {
             throw new NotImplementedException();
-        }
-
-        if (useSiteList && string.IsNullOrWhiteSpace(siteListPath))
-        {
-            throw new ArgumentException("Site list path cannot be null or whitespace when useSiteList is true.", nameof(siteListPath));
         }
 
         var tokens = Tokenize(presetArgs);
@@ -35,23 +30,7 @@ public static class GoodbyeDpiArguments
                 continue;
             }
 
-            if (useSiteList && string.Equals(token, "--blacklist", StringComparison.OrdinalIgnoreCase))
-            {
-                if (i + 1 < tokens.Count)
-                {
-                    i++;
-                }
-                continue;
-            }
-
             retained.Add(token);
-        }
-
-        if (useSiteList)
-        {
-            var cleanPath = siteListPath.Trim().Trim('\"');
-            retained.Add("--blacklist");
-            retained.Add($"\"{cleanPath}\"");
         }
 
         return string.Join(" ", retained).Trim();
