@@ -29,7 +29,42 @@ public static class SiteListMerger
 
     public static IReadOnlyList<string> Merge(IEnumerable<string> userEntries, IEnumerable<string> defaultEntries)
     {
-        throw new NotImplementedException();
+        var result = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (userEntries != null)
+        {
+            foreach (var entry in userEntries)
+            {
+                if (entry == null)
+                {
+                    continue;
+                }
+                var trimmed = entry.Trim();
+                if (trimmed.Length > 0 && seen.Add(trimmed))
+                {
+                    result.Add(trimmed);
+                }
+            }
+        }
+
+        if (defaultEntries != null)
+        {
+            foreach (var entry in defaultEntries)
+            {
+                if (entry == null)
+                {
+                    continue;
+                }
+                var trimmed = entry.Trim();
+                if (trimmed.Length > 0 && seen.Add(trimmed))
+                {
+                    result.Add(trimmed);
+                }
+            }
+        }
+
+        return result;
     }
 
     public static bool Covers(IEnumerable<string> entries, string host)
