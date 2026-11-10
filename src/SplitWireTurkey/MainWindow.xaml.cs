@@ -4856,22 +4856,13 @@ foreach ($adapter in $adapters) {
     
     Write-Host ""Adaptör: $adapterName (GUID: $adapterGuid)""
     
-    # IPv4 DNS ayarları
+    # DNS ayarları (IPv4 ve IPv6)
     try {
-        Set-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -ServerAddresses '1.1.1.1', '1.0.0.1' -ErrorAction Stop
-        Write-Host ""IPv4 DNS ayarları başarılı: $adapterName""
+        Set-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -ServerAddresses '1.1.1.1', '1.0.0.1', '2606:4700:4700::1111', '2606:4700:4700::1001' -ErrorAction Stop
+        Write-Host ""DNS ayarları başarılı: $adapterName""
     }
     catch {
-        Write-Host ""IPv4 DNS ayarları başarısız: $adapterName - $($_.Exception.Message)""
-    }
-    
-    # IPv6 DNS ayarları
-    try {
-        Set-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv6 -ServerAddresses '2606:4700:4700::1111', '2606:4700:4700::1001' -ErrorAction Stop
-        Write-Host ""IPv6 DNS ayarları başarılı: $adapterName""
-    }
-    catch {
-        Write-Host ""IPv6 DNS ayarları başarısız: $adapterName - $($_.Exception.Message)""
+        Write-Host ""DNS ayarları başarısız: $adapterName - $($_.Exception.Message)""
     }
     
     # DoH ayarları için registry yolu
