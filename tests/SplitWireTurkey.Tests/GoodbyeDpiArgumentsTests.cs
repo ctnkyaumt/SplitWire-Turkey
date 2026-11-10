@@ -51,4 +51,21 @@ public class GoodbyeDpiArgumentsTests
 
         Assert.Equal(expected, actual);
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Build_when_useSiteList_and_siteListPath_null_or_whitespace_throws_ArgumentException(string path)
+    {
+        Assert.Throws<ArgumentException>(() => GoodbyeDpiArguments.Build("-9", true, path, false));
+    }
+
+    [Fact]
+    public void Build_when_not_useSiteList_keeps_existing_blacklist_untouched()
+    {
+        const string input = @"-5 --blacklist old.txt -e 2";
+        var actual = GoodbyeDpiArguments.Build(input, false, null, true);
+        Assert.Equal(input, actual);
+    }
 }
