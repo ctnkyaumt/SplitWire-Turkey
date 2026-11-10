@@ -19,6 +19,7 @@ using System.Windows.Media.Effects;
 using System.Windows.Input;
 using System.Windows.Threading;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.IO.Compression;
@@ -5196,15 +5197,19 @@ Write-Host ""DNS settings reset completed""
 
         private int ExecutePowerShellScript(string script)
         {
+            string tempScriptPath = null;
             try
             {
                 var logPath = GetDNSLogPath();
                 File.AppendAllText(logPath, $"PowerShell Script çalıştırılıyor...\n");
+
+                tempScriptPath = Path.Combine(Path.GetTempPath(), $"splitwire_{Guid.NewGuid():N}.ps1");
+                File.WriteAllText(tempScriptPath, script, new UTF8Encoding(true));
                 
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = "powershell",
-                    Arguments = $"-ExecutionPolicy Bypass -Command \"{script}\"",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{tempScriptPath}\"",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -5239,6 +5244,23 @@ Write-Host ""DNS settings reset completed""
                 var logPath = GetDNSLogPath();
                 File.AppendAllText(logPath, $"PowerShell Hatası: {ex.Message}\n");
                 return -1;
+            }
+            finally
+            {
+                if (tempScriptPath != null)
+                {
+                    try
+                    {
+                        if (File.Exists(tempScriptPath))
+                        {
+                            File.Delete(tempScriptPath);
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore delete errors
+                    }
+                }
             }
         }
 
