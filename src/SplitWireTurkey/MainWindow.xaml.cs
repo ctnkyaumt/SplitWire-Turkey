@@ -8851,11 +8851,6 @@ Get-DnsClientDohServerAddress
             return results != null && results.Count > 0 && results.All(r => r.Success);
         }
 
-        private async Task<IReadOnlyList<TargetResult>> TestGoodbyeDPIPresetOneTimeAsync(string parameters, bool returnDetails)
-        {
-            return await TestGoodbyeDPIPresetOneTimeResultsAsync(parameters);
-        }
-
         private async Task<IReadOnlyList<TargetResult>> TestGoodbyeDPIPresetOneTimeResultsAsync(string parameters)
         {
             Process process = null;
