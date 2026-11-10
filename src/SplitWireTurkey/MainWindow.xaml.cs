@@ -8921,7 +8921,52 @@ Get-DnsClientDohServerAddress
                 Debug.WriteLine($"Error logging probe results: {ex.Message}");
             }
 
-            return results;
+            var finalResults = results.ToList();
+            var failedIndices = new List<int>();
+            var failedTargets = new List<ProbeTarget>();
+
+            for (int i = 0; i < results.Count; i++)
+            {
+                if (!results[i].Success)
+                {
+                    failedIndices.Add(i);
+                    failedTargets.Add(targets[i]);
+                }
+            }
+
+            if (failedTargets.Count > 0)
+            {
+                try
+                {
+                    File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] İlk denemede başarısız olan {failedTargets.Count} hedef 1 saniye sonra tekrar test ediliyor...\n");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Error logging retry banner: {ex.Message}");
+                }
+
+                await Task.Delay(1000);
+
+                var retryResults = await probe.ProbeAsync(failedTargets, TimeSpan.FromSeconds(8));
+                for (int i = 0; i < failedIndices.Count; i++)
+                {
+                    int origIndex = failedIndices[i];
+                    var retryResult = retryResults[i];
+                    finalResults[origIndex] = retryResult;
+
+                    try
+                    {
+                        var status = retryResult.Success ? "OK" : "FAIL";
+                        File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Hedef tekrar test edildi: {retryResult.Target} -> {status} ({retryResult.Elapsed.TotalMilliseconds:F0} ms)\n");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Error logging retry result: {ex.Message}");
+                    }
+                }
+            }
+
+            return finalResults;
         }
 
         /// <summary>
