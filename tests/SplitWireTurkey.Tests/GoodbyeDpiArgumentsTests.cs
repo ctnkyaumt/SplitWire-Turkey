@@ -39,4 +39,16 @@ public class GoodbyeDpiArgumentsTests
 
         Assert.Equal(expected, actual);
     }
+
+    [Fact]
+    public void Build_replaces_all_existing_blacklists_with_new_blacklist_when_useSiteList_is_true()
+    {
+        const string input = @"-5 --blacklist old.txt -e 2 --blacklist ""C:\a b\x.txt"" --dns-addr 1.1.1.1";
+        const string siteListPath = @"C:\new\list.txt";
+        const string expected = @"-5 -e 2 --dns-addr 1.1.1.1 --blacklist ""C:\new\list.txt""";
+
+        var actual = GoodbyeDpiArguments.Build(input, true, siteListPath, true);
+
+        Assert.Equal(expected, actual);
+    }
 }
