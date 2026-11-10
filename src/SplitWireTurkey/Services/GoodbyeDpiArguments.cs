@@ -25,6 +25,15 @@ public static class GoodbyeDpiArguments
                 continue;
             }
 
+            if (useSiteList && string.Equals(token, "--blacklist", StringComparison.OrdinalIgnoreCase))
+            {
+                if (i + 1 < tokens.Count)
+                {
+                    i++;
+                }
+                continue;
+            }
+
             retained.Add(token);
         }
 
