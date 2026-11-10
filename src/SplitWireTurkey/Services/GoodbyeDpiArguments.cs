@@ -8,6 +8,11 @@ public static class GoodbyeDpiArguments
 {
     public static string Build(string presetArgs, bool useSiteList, string siteListPath, bool ipv6Available)
     {
+        if (ipv6Available)
+        {
+            throw new NotImplementedException();
+        }
+
         if (useSiteList && string.IsNullOrWhiteSpace(siteListPath))
         {
             throw new ArgumentException("Site list path cannot be null or whitespace when useSiteList is true.", nameof(siteListPath));
