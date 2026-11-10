@@ -5341,14 +5341,120 @@ $dohResults | ConvertTo-Json
                 Debug.WriteLine($"DoH ayarları kontrolü:\n{dohOutput}");
                 File.AppendAllText(logPath, $"DoH Ayarları Kontrolü:\n{dohOutput}\n");
 
-                // Kontrol sonuçları - Sadece DoH ayarlarını kontrol et
-                bool hasDoHSettings = dohOutput.Contains("DoHSettings") && !dohOutput.Contains("0");
+                // Doğrulama sonuçlarını ayrıştır ve kontrol et
+                static IEnumerable<JsonElement> EnumerateElements(JsonElement root)
+                {
+                    if (root.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var item in root.EnumerateArray())
+                        {
+                            yield return item;
+                        }
+                    }
+                    else if (root.ValueKind == JsonValueKind.Object)
+                    {
+                        yield return root;
+                    }
+                }
 
-                Debug.WriteLine($"DoH Ayarları: {hasDoHSettings}");
-                File.AppendAllText(logPath, $"Doğrulama Sonuçları: DoH Ayarları={hasDoHSettings}\n");
+                if (string.IsNullOrWhiteSpace(output) || string.IsNullOrWhiteSpace(dohOutput))
+                {
+                    Debug.WriteLine("DNS doğrulama hatası: Komut çıktısı boş.");
+                    File.AppendAllText(logPath, "Doğrulama Hatası: Komut çıktısı boş.\n");
+                    return false;
+                }
 
-                // DNS ayarları zaten başarıyla otomatik yapıldı, sadece DoH kontrolü yeterli
-                return !hasDoHSettings; // DoH ayarları yoksa başarılı
+                var dnsAdapters = new List<(string Name, string IPv4Servers, bool Ok)>();
+                try
+                {
+                    using var dnsDoc = JsonDocument.Parse(output);
+                    foreach (var element in EnumerateElements(dnsDoc.RootElement))
+                    {
+                        if (element.ValueKind != JsonValueKind.Object)
+                        {
+                            continue;
+                        }
+
+                        string name = element.TryGetProperty("AdapterName", out var nameProp)
+                            ? (nameProp.GetString() ?? "Bilinmeyen")
+                            : "Bilinmeyen";
+                        string ipv4 = element.TryGetProperty("IPv4Servers", out var ipProp)
+                            ? (ipProp.GetString() ?? string.Empty)
+                            : string.Empty;
+                        bool ok = ipv4.Contains("1.1.1.1");
+                        dnsAdapters.Add((name, ipv4, ok));
+                    }
+                }
+                catch (JsonException ex)
+                {
+                    Debug.WriteLine($"DNS JSON ayrıştırma hatası: {ex.Message}");
+                    File.AppendAllText(logPath, $"DNS JSON Ayrıştırma Hatası: {ex.Message}\n");
+                    return false;
+                }
+
+                var dohAdapters = new List<(string Name, int DoHSettings, bool Ok)>();
+                try
+                {
+                    using var dohDoc = JsonDocument.Parse(dohOutput);
+                    foreach (var element in EnumerateElements(dohDoc.RootElement))
+                    {
+                        if (element.ValueKind != JsonValueKind.Object)
+                        {
+                            continue;
+                        }
+
+                        string name = element.TryGetProperty("AdapterName", out var nameProp)
+                            ? (nameProp.GetString() ?? "Bilinmeyen")
+                            : "Bilinmeyen";
+                        int dohCount = 0;
+                        bool hasNumeric = false;
+                        if (element.TryGetProperty("DoHSettings", out var dohProp))
+                        {
+                            if (dohProp.ValueKind == JsonValueKind.Number && dohProp.TryGetInt32(out int val))
+                            {
+                                dohCount = val;
+                                hasNumeric = true;
+                            }
+                            else if (dohProp.ValueKind == JsonValueKind.String && int.TryParse(dohProp.GetString(), out int parsedVal))
+                            {
+                                dohCount = parsedVal;
+                                hasNumeric = true;
+                            }
+                        }
+
+                        bool ok = hasNumeric && dohCount > 0;
+                        dohAdapters.Add((name, dohCount, ok));
+                    }
+                }
+                catch (JsonException ex)
+                {
+                    Debug.WriteLine($"DoH JSON ayrıştırma hatası: {ex.Message}");
+                    File.AppendAllText(logPath, $"DoH JSON Ayrıştırma Hatası: {ex.Message}\n");
+                    return false;
+                }
+
+                foreach (var a in dnsAdapters)
+                {
+                    var verdict = a.Ok ? "OK" : "FAIL";
+                    Debug.WriteLine($"DNS Doğrulama [{a.Name}]: IPv4={a.IPv4Servers} -> {verdict}");
+                    File.AppendAllText(logPath, $"DNS Doğrulama [{a.Name}]: IPv4={a.IPv4Servers} -> {verdict}\n");
+                }
+
+                foreach (var a in dohAdapters)
+                {
+                    var verdict = a.Ok ? "OK" : "FAIL";
+                    Debug.WriteLine($"DoH Doğrulama [{a.Name}]: DoHSettings={a.DoHSettings} -> {verdict}");
+                    File.AppendAllText(logPath, $"DoH Doğrulama [{a.Name}]: DoHSettings={a.DoHSettings} -> {verdict}\n");
+                }
+
+                bool dnsSuccess = dnsAdapters.Count > 0 && dnsAdapters.All(a => a.Ok);
+                bool dohSuccess = dohAdapters.Count > 0 && dohAdapters.All(a => a.Ok);
+                bool overallSuccess = dnsSuccess && dohSuccess;
+
+                Debug.WriteLine($"Doğrulama Sonuçları: DNS Başarılı={dnsSuccess}, DoH Başarılı={dohSuccess}, Genel={overallSuccess}");
+                File.AppendAllText(logPath, $"Doğrulama Sonuçları: DNS Başarılı={dnsSuccess}, DoH Başarılı={dohSuccess}, Genel={overallSuccess}\n");
+
+                return overallSuccess;
             }
             catch (Exception ex)
             {
