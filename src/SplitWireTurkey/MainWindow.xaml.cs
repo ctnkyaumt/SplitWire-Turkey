@@ -7953,14 +7953,16 @@ Get-DnsClientDohServerAddress
                 }
 
                 // Parametreleri hazırla
-                var parameters = txtGoodbyeDPIParams.Text.Trim();
-                File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Temel parametreler: {parameters}\n");
+                var rawParams = txtGoodbyeDPIParams.Text.Trim();
+                File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Temel parametreler: {rawParams}\n");
                 
-                if (chkGoodbyeDPIUseBlacklist.IsChecked == true)
+                var localGoodbyeDPIPath = GetLocalAppDataGoodbyeDPIPath();
+                var blacklistPath = Path.Combine(localGoodbyeDPIPath, "blacklist.txt");
+                bool useSiteList = chkGoodbyeDPIUseBlacklist.IsChecked == true;
+                bool ipv6Available = NetworkCapabilities.HasGlobalIPv6();
+                var parameters = GoodbyeDpiArguments.Build(rawParams, useSiteList, blacklistPath, ipv6Available);
+                if (useSiteList)
                 {
-                    var localGoodbyeDPIPath = GetLocalAppDataGoodbyeDPIPath();
-                    var blacklistPath = Path.Combine(localGoodbyeDPIPath, "blacklist.txt");
-                    parameters += $" --blacklist \"{blacklistPath}\"";
                     File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Blacklist eklendi: {blacklistPath}\n");
                 }
                 
@@ -8077,13 +8079,12 @@ Get-DnsClientDohServerAddress
                 }
 
                 // Parametreleri hazırla
-                var parameters = txtGoodbyeDPIParams.Text.Trim();
-                if (chkGoodbyeDPIUseBlacklist.IsChecked == true)
-                {
-                    var localGoodbyeDPIPath = GetLocalAppDataGoodbyeDPIPath();
-                    var blacklistPath = Path.Combine(localGoodbyeDPIPath, "blacklist.txt");
-                    parameters += $" --blacklist \"{blacklistPath}\"";
-                }
+                var rawParams = txtGoodbyeDPIParams.Text.Trim();
+                var localGoodbyeDPIPath = GetLocalAppDataGoodbyeDPIPath();
+                var blacklistPath = Path.Combine(localGoodbyeDPIPath, "blacklist.txt");
+                bool useSiteList = chkGoodbyeDPIUseBlacklist.IsChecked == true;
+                bool ipv6Available = NetworkCapabilities.HasGlobalIPv6();
+                var parameters = GoodbyeDpiArguments.Build(rawParams, useSiteList, blacklistPath, ipv6Available);
 
                 // Tek seferlik çalıştırma
                 var success = await RunGoodbyeDPIBatch(parameters);
@@ -8743,19 +8744,67 @@ Get-DnsClientDohServerAddress
         }
 
         /// <summary>
+        /// GoodbyeDPI bağlantı doğrulaması için paralel probe çalıştırır ve sonuçları döner.
+        /// </summary>
+        private async Task<IReadOnlyList<TargetResult>> ProbeGoodbyeDPIConnectionsAsync()
+        {
+            var localGoodbyeDPIPath = GetLocalAppDataGoodbyeDPIPath();
+            var blacklistPath = Path.Combine(localGoodbyeDPIPath, "blacklist.txt");
+            bool useSiteList = false;
+            Dispatcher.Invoke(() => useSiteList = chkGoodbyeDPIUseBlacklist?.IsChecked == true);
+
+            IReadOnlyList<string> localList = Array.Empty<string>();
+            if (File.Exists(blacklistPath))
+            {
+                try
+                {
+                    var content = File.ReadAllText(blacklistPath);
+                    localList = SiteListMerger.Parse(content);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Error reading blacklist for probe: {ex.Message}");
+                }
+            }
+
+            var targets = new List<ProbeTarget>();
+            foreach (var target in GoodbyeDpiProbeTargets.Default)
+            {
+                if (target.Kind != ProbeKind.Blocked || !useSiteList || SiteListMerger.Covers(localList, target.Host))
+                {
+                    targets.Add(target);
+                }
+            }
+
+            var probe = new SiteProbe();
+            var results = await probe.ProbeAsync(targets, TimeSpan.FromSeconds(8));
+
+            var logPath = GetGoodbyeDPILogPath();
+            try
+            {
+                foreach (var r in results)
+                {
+                    var status = r.Success ? "OK" : "FAIL";
+                    File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Hedef test edildi: {r.Target} -> {status} ({r.Elapsed.TotalMilliseconds:F0} ms)\n");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error logging probe results: {ex.Message}");
+            }
+
+            return results;
+        }
+
+        /// <summary>
         /// GoodbyeDPI preset doğrulaması. ByeDPI tarafındaki TestByeDPIConnectionsAsync ile aynı mantık:
         /// engellenen site açılmalı, engellenmeyen siteler ise preset yüzünden bozulmamalı.
         /// Aksi halde --set-ttl gibi agresif presetler "çalışıyor" sayılıp normal trafiği kırabilir.
         /// </summary>
         private async Task<bool> TestGoodbyeDPIConnectionsAsync()
         {
-            // pastebin.com gerçekten engelli -> preset onu açabilmeli.
-            if (!await TestConnectionToUrlAsync("https://pastebin.com", "pastebin")) return false;
-
-            // Bu iki site engelli değil -> preset onları bozmamalı.
-            if (!await TestConnectionToUrlAsync("https://www.turkiye.gov.tr/", "e-Devlet")) return false;
-
-            return await TestConnectionToUrlAsync("https://www.turkcell.com.tr/");
+            var results = await ProbeGoodbyeDPIConnectionsAsync();
+            return results != null && results.Count > 0 && results.All(r => r.Success);
         }
 
         private async Task<bool> IsGoodbyeDPIServiceRunningAsync()
@@ -8798,6 +8847,17 @@ Get-DnsClientDohServerAddress
 
         private async Task<bool> TestGoodbyeDPIPresetOneTimeAsync(string parameters)
         {
+            var results = await TestGoodbyeDPIPresetOneTimeResultsAsync(parameters);
+            return results != null && results.Count > 0 && results.All(r => r.Success);
+        }
+
+        private async Task<IReadOnlyList<TargetResult>> TestGoodbyeDPIPresetOneTimeAsync(string parameters, bool returnDetails)
+        {
+            return await TestGoodbyeDPIPresetOneTimeResultsAsync(parameters);
+        }
+
+        private async Task<IReadOnlyList<TargetResult>> TestGoodbyeDPIPresetOneTimeResultsAsync(string parameters)
+        {
             Process process = null;
             try
             {
@@ -8807,15 +8867,15 @@ Get-DnsClientDohServerAddress
                 
                 if (!File.Exists(exePath))
                 {
-                    return false;
+                    return null;
                 }
 
-                var fullParams = parameters;
-                if (chkGoodbyeDPIUseBlacklist.IsChecked == true)
-                {
-                    var blacklistPath = Path.Combine(localGoodbyeDPIPath, "blacklist.txt");
-                    fullParams += $" --blacklist \"{blacklistPath}\"";
-                }
+                bool useSiteList = false;
+                Dispatcher.Invoke(() => useSiteList = chkGoodbyeDPIUseBlacklist?.IsChecked == true);
+                var blacklistPath = Path.Combine(localGoodbyeDPIPath, "blacklist.txt");
+                bool ipv6Available = NetworkCapabilities.HasGlobalIPv6();
+
+                var fullParams = GoodbyeDpiArguments.Build(parameters, useSiteList, blacklistPath, ipv6Available);
 
                 var startInfo = new ProcessStartInfo
                 {
@@ -8834,16 +8894,16 @@ Get-DnsClientDohServerAddress
                 // If the process has exited, it means it crashed or failed to run
                 if (process.HasExited)
                 {
-                    return false;
+                    return null;
                 }
 
-                var connected = await TestGoodbyeDPIConnectionsAsync();
+                var connected = await ProbeGoodbyeDPIConnectionsAsync();
                 return connected;
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error testing preset one-time: {ex.Message}");
-                return false;
+                return null;
             }
             finally
             {
@@ -9018,22 +9078,69 @@ Get-DnsClientDohServerAddress
             await StopGoodbyeDPIServiceAndProcesses();
 
             string workingPresetName = null;
-            foreach (var presetName in testOrder)
+            TimeSpan chosenTotalTime = TimeSpan.Zero;
+
+            // İlk 5 preseti test et ve PresetSelector ile en hızlısını seç
+            var firstFive = testOrder.Take(5).ToList();
+            var probeResults = new List<PresetProbeResult>();
+
+            foreach (var presetName in firstFive)
             {
                 File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Test ediliyor: {presetName}...\n");
                 
-                var parameters = GetGoodbyeDPIPresetParameters(presetName);
-                var success = await TestGoodbyeDPIPresetOneTimeAsync(parameters);
+                var presetParams = GetGoodbyeDPIPresetParameters(presetName);
+                var targetResults = await TestGoodbyeDPIPresetOneTimeResultsAsync(presetParams);
                 
-                if (success)
+                if (targetResults != null && targetResults.Count > 0)
                 {
-                    workingPresetName = presetName;
-                    File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Çalışan preset bulundu: {presetName}\n");
-                    break;
+                    probeResults.Add(new PresetProbeResult(presetName, targetResults));
+                    bool allOk = targetResults.All(t => t.Success);
+                    if (allOk)
+                    {
+                        var sumElapsed = TimeSpan.FromTicks(targetResults.Sum(t => t.Elapsed.Ticks));
+                        File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Preset başarılı: {presetName} (Toplam süre: {sumElapsed.TotalMilliseconds:F0} ms)\n");
+                    }
+                    else
+                    {
+                        File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Preset başarısız: {presetName}\n");
+                    }
                 }
                 else
                 {
-                    File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Preset başarısız: {presetName}\n");
+                    File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Preset çalıştırılamadı: {presetName}\n");
+                }
+            }
+
+            var bestChoice = PresetSelector.Choose(probeResults);
+            if (bestChoice != null)
+            {
+                workingPresetName = bestChoice.PresetName;
+                chosenTotalTime = bestChoice.TotalElapsed;
+                File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] İlk 5 preset arasından en hızlı çalışan preset seçildi: {workingPresetName} (Toplam süre: {chosenTotalTime.TotalMilliseconds:F0} ms)\n");
+            }
+            else
+            {
+                File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] İlk 5 preset arasında tüm hedefleri geçen bulunamadı. Kalan presetler sırayla deneniyor...\n");
+
+                var remaining = testOrder.Skip(5).ToList();
+                foreach (var presetName in remaining)
+                {
+                    File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Test ediliyor: {presetName}...\n");
+                    
+                    var presetParams = GetGoodbyeDPIPresetParameters(presetName);
+                    var targetResults = await TestGoodbyeDPIPresetOneTimeResultsAsync(presetParams);
+                    
+                    if (targetResults != null && targetResults.Count > 0 && targetResults.All(t => t.Success))
+                    {
+                        workingPresetName = presetName;
+                        chosenTotalTime = TimeSpan.FromTicks(targetResults.Sum(t => t.Elapsed.Ticks));
+                        File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Çalışan preset bulundu: {presetName} (Toplam süre: {chosenTotalTime.TotalMilliseconds:F0} ms)\n");
+                        break;
+                    }
+                    else
+                    {
+                        File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Preset başarısız: {presetName}\n");
+                    }
                 }
             }
 
@@ -9051,19 +9158,19 @@ Get-DnsClientDohServerAddress
                     }
                 });
 
-                var parameters = GetGoodbyeDPIPresetParameters(workingPresetName);
-                if (chkGoodbyeDPIUseBlacklist.IsChecked == true)
-                {
-                    var localGoodbyeDPIPath = GetLocalAppDataGoodbyeDPIPath();
-                    var blacklistPath = Path.Combine(localGoodbyeDPIPath, "blacklist.txt");
-                    parameters += $" --blacklist \"{blacklistPath}\"";
-                }
+                var rawParams = GetGoodbyeDPIPresetParameters(workingPresetName);
+                var localGoodbyeDPIPath = GetLocalAppDataGoodbyeDPIPath();
+                var blacklistPath = Path.Combine(localGoodbyeDPIPath, "blacklist.txt");
+                bool useSiteList = false;
+                Dispatcher.Invoke(() => useSiteList = chkGoodbyeDPIUseBlacklist?.IsChecked == true);
+                bool ipv6Available = NetworkCapabilities.HasGlobalIPv6();
+                var parameters = GoodbyeDpiArguments.Build(rawParams, useSiteList, blacklistPath, ipv6Available);
 
                 File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Yeni çalışan preset {workingPresetName} için hizmet kuruluyor...\n");
                 var installSuccess = await InstallGoodbyeDPIService(parameters, logPath);
                 if (installSuccess)
                 {
-                    File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Hizmet başarıyla yeni preset ile güncellendi.\n");
+                    File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Hizmet başarıyla yeni preset ile güncellendi. Seçilen preset: {workingPresetName} (Toplam süre: {chosenTotalTime.TotalMilliseconds:F0} ms)\n");
                     SaveActivePresetToRegistry(REG_GOODBYEDPI_PRESET, workingPresetName);
                     System.Windows.MessageBox.Show(
                         LanguageManager.GetText("messages", "goodbyedpi_fallback_success")?.Replace("{0}", workingPresetName) 
